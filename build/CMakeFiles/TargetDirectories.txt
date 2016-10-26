@@ -1,0 +1,2 @@
+/home/ritsu/work/parser/lstm-list-parser/build/parser/CMakeFiles/lstm-parse.dir
+/home/ritsu/work/parser/lstm-list-parser/build/cnn/cnn/CMakeFiles/cnn.dir
