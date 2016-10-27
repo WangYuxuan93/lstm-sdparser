@@ -14,8 +14,8 @@ using namespace cnn;
 using namespace std;
 namespace po = boost::program_options;
 
-std::vector<unsigned> possible_actions;
-unordered_map<unsigned, std::vector<float>> pretrained;
+//std::vector<unsigned> possible_actions;
+//unordered_map<unsigned, std::vector<float>> pretrained;
 
 void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
   po::options_description opts("Configuration options");
@@ -62,45 +62,8 @@ void signal_callback_handler(int /* signum */) {
   requested_stop = true;
 }
 
-void output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
-                  const vector<string>& sentenceUnkStrings, 
-                  const map<unsigned, string>& intToWords, 
-                  const map<unsigned, string>& intToPos, 
-                  const vector<vector<string>>& hyp) {
-    for (unsigned i = 0; i < (sentence.size()-1); ++i) {
-        auto index = i + 1;
-        assert(i < sentenceUnkStrings.size() && 
-            ((sentence[i] == corpus.get_or_add_word(cpyp::Corpus::UNK) &&
-                sentenceUnkStrings[i].size() > 0) ||
-                (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
-                sentenceUnkStrings[i].size() == 0 &&
-                intToWords.find(sentence[i]) != intToWords.end())));
-        string wit = (sentenceUnkStrings[i].size() > 0)? 
-        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
-        auto pit = intToPos.find(pos[i]);
-        for (unsigned j = 0; j < sentence.size() ; ++j){
-            if (hyp[j][i] != ltp::lstmsdparser::REL_NULL){
-                auto hyp_head = j + 1;
-                if (hyp_head == sentence.size()) hyp_head = 0;
-                auto hyp_rel = hyp[j][i];
-                cout << index << '\t'       // 1. ID 
-                    << wit << '\t'         // 2. FORM
-                    << "_" << '\t'         // 3. LEMMA 
-                    << "_" << '\t'         // 4. CPOSTAG 
-                    << pit->second << '\t' // 5. POSTAG
-                    << "_" << '\t'         // 6. FEATS
-                    << hyp_head << '\t'    // 7. HEAD
-                    << hyp_rel << '\t'     // 8. DEPREL
-                    << "_" << '\t'         // 9. PHEAD
-                    << "_" << endl;        // 10. PDEPREL
-            }
-        }
-  }
-  cout << endl;
-}
-
 int main(int argc, char** argv) {
-  cnn::Initialize(argc, argv);
+  //cnn::Initialize(argc, argv);
 
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
@@ -109,7 +72,7 @@ int main(int argc, char** argv) {
 
   po::variables_map conf;
   InitCommandLine(argc, argv, &conf);
-  ltp::lstmsdparser::Sizes System_size;
+  //ltp::lstmsdparser::Sizes System_size;
   ltp::lstmsdparser::Options Opt;
   Opt.USE_POS = conf.count("use_pos_tags");
 
@@ -152,51 +115,14 @@ int main(int argc, char** argv) {
   const string fname = os.str();
   cerr << "Writing parameters to file: " << fname << endl;
   bool softlinkCreated = false;
-  corpus.load_correct_actions(conf["training_data"].as<string>());	
-  const unsigned kUNK = corpus.get_or_add_word(cpyp::Corpus::UNK);
-  System_size.kROOT_SYMBOL = corpus.get_or_add_word(ltp::lstmsdparser::ROOT_SYMBOL);
+  
 
-  if (conf.count("words")) {
-    pretrained[kUNK] = std::vector<float>(Opt.PRETRAINED_DIM, 0);
-    cerr << "Loading from " << conf["words"].as<string>() << " with" << Opt.PRETRAINED_DIM << " dimensions\n";
-    ifstream in(conf["words"].as<string>().c_str());
-    string line;
-    getline(in, line);
-    std::vector<float> v(Opt.PRETRAINED_DIM, 0);
-    string word;
-    while (getline(in, line)) {
-      istringstream lin(line);
-      lin >> word;
-      for (unsigned i = 0; i < Opt.PRETRAINED_DIM; ++i) lin >> v[i];
-      unsigned id = corpus.get_or_add_word(word);
-      pretrained[id] = v;
-    }
-  }
-
-  set<unsigned> training_vocab; // words available in the training corpus
-  set<unsigned> singletons;
-  {  // compute the singletons in the parser's training data
-    map<unsigned, unsigned> counts;
-    for (auto sent : corpus.sentences)
-      for (auto word : sent.second) { training_vocab.insert(word); counts[word]++; }
-    for (auto wc : counts)
-      if (wc.second == 1) singletons.insert(wc.first);
-  }
-
-  cerr << "Number of words: " << corpus.nwords << endl;
-  System_size.VOCAB_SIZE = corpus.nwords + 1;
-  //ACTION_SIZE = corpus.nactions + 1;
-  System_size.ACTION_SIZE = corpus.nactions + 30; // leave places for new actions in test set
-  System_size.POS_SIZE = corpus.npos + 10;  // bad way of dealing with the fact that we may see new POS tags in the test set
-  possible_actions.resize(corpus.nactions);
-  for (unsigned i = 0; i < corpus.nactions; ++i)
-    possible_actions[i] = i;
-
-  Model model;
+  //Model model;
   LSTMParser *parser = new LSTMParser();
-  parser -> set_options(Opt);
-  parser -> load(conf["model"].as<string>(), pretrained, possible_actions, System_size);
-  parser -> setup_system();
+  //parser -> set_options(Opt);
+  parser -> load(conf["model"].as<string>(), conf["training_data"].as<string>(), 
+                  conf["words"].as<string>(), conf["dev_data"].as<string>() );
+  //parser -> get_dynamic_infos();
   /*
   if (conf.count("model")) {
     ifstream in(conf["model"].as<string>().c_str());
@@ -205,8 +131,9 @@ int main(int argc, char** argv) {
   }*/
 
   // OOV words will be replaced by UNK tokens
-  corpus.load_correct_actionsDev(conf["dev_data"].as<string>());
+  
   //TRAINING
+  /*
   if (conf.count("train")) {
     signal(SIGINT, signal_callback_handler);
     SimpleSGDTrainer sgd(&model);
@@ -333,72 +260,27 @@ int main(int argc, char** argv) {
       }
     }//while
   } // should do training?
+  */
   if (true) { // do test evaluation
-    double llh = 0;
-    double trs = 0;
-    double right = 0;
-    //double correct_heads = 0;
-    //double total_heads = 0;
-    std::vector<std::vector<std::vector<string>>> refs, hyps;
-    auto t_start = std::chrono::high_resolution_clock::now();
-    unsigned corpus_size = corpus.nsentencesDev;
-
-    int miss_head = 0;
-
-    for (unsigned sii = 0; sii < corpus_size; ++sii) {
-      const std::vector<unsigned>& sentence=corpus.sentencesDev[sii];
-      const std::vector<unsigned>& sentencePos=corpus.sentencesPosDev[sii]; 
-      const std::vector<string>& sentenceUnkStr=corpus.sentencesStrDev[sii]; 
-      const std::vector<unsigned>& actions=corpus.correct_act_sentDev[sii];
-      std::vector<unsigned> tsentence=sentence;
-      for (auto& w : tsentence)
-        if (training_vocab.count(w) == 0) w = kUNK;
-      double lp = 0;
-      std::vector<unsigned> pred;
-      std::vector<std::vector<string>> cand;
-      std::vector<Expression> word_rep; // word representations
-      Expression act_rep; // final action representation
-      //cerr<<"compute action" << endl;
-      {
-      ComputationGraph cg;
-      pred = parser->log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
-                                                        corpus.actions, corpus.intToWords, &right, cand, &word_rep, &act_rep);
-      }
-      /*cerr << cand.size() << endl;
-      for (unsigned i = 0; i < cand.size(); ++i){
-        for (unsigned j = 0; j < cand.size(); ++j){
-            if (cand[i][j] != REL_NULL)
-                cerr << "from " << i << " to " << j << " rel: " << cand[i][j] << endl;
-        }
-      }*/
-      llh -= lp;
-      trs += actions.size();
-      //map<int, string> rel_ref, rel_hyp;
-      //cerr << "compute heads "<<endl;
-      std::vector<std::vector<string>> ref = parser->compute_heads(sentence, actions, corpus.actions);
-      std::vector<std::vector<string>> hyp = parser->compute_heads(sentence, pred, corpus.actions);
-      refs.push_back(ref);
-      hyps.push_back(hyp);
-      if (parser->process_headless(hyp, cand, word_rep, act_rep, corpus.actions, sentence, sentencePos) > 0) {
-            miss_head++;
-            cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
-        }
-        //cerr<<"write to file" <<endl;
-      output_conll(sentence, sentencePos, sentenceUnkStr, corpus.intToWords, corpus.intToPos, hyp);
-      //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
-      //total_heads += sentence.size() - 1;
-    }
-    //cerr << "miss head number: " << miss_head << endl;
-    map<string, double> results = ltp::lstmsdparser::evaluate(refs, hyps, corpus.sentencesPosDev, corpus.posToInt["PU"]);
-    auto t_end = std::chrono::high_resolution_clock::now();
-    cerr << "TEST llh=" << llh << " ppl: " << exp(llh / trs) << " err: " << (trs - right) / trs 
-    << " LF: " << results["LF"] << " UF:" << results["UF"]  << " LP:" << results["LP"] << " LR:" << results["LR"] 
-    << " UP:" << results["UP"] << " UR:" <<results["UR"]  << "\t[" << corpus_size << " sents in " 
-        << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
+    parser->predict_dev(); // id : 22 146 296 114 21
+    /*
+    std::vector<std::vector<string>> hyp;
+    string word[]={"我","是","中国","学生","ROOT"}; // id : 22 146 296 114 21
+    size_t w_count=sizeof(word)/sizeof(string);
+    string pos[]={"NN","VE","JJ","NN","ROOT"};
+    size_t p_count=sizeof(word)/sizeof(string);
+    std::vector<std::string> words(word,word+w_count);
+    std::vector<std::string> postags(pos,pos+p_count);
+    parser -> predict(hyp, words, postags);
+    for (int i = 0; i < hyp.size(); i++){
+      for (int j = 0; j < hyp.size(); j++)
+        cerr << hyp[i][j] << " ";
+      cerr << endl;
+    }*/
   }
-  for (unsigned i = 0; i < corpus.actions.size(); ++i) {
+  //for (unsigned i = 0; i < corpus.actions.size(); ++i) {
     //cerr << corpus.actions[i] << '\t' << parser.p_r->values[i].transpose() << endl;
     //cerr << corpus.actions[i] << '\t' << parser.p_p2a->values.col(i).transpose() << endl;
-  }
+  //}
 }
 

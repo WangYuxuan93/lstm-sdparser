@@ -1,5 +1,5 @@
-#ifndef CPYPDICT_H_
-#define CPYPDICT_H_
+#ifndef __LTP_LSTMSDPARSER_CPYPDICT_H__
+#define __LTP_LSTMSDPARSER_CPYPDICT_H__
 
 #include <string>
 #include <iostream>
@@ -498,4 +498,4 @@ void ReadParallelCorpusFromFile(const std::string& filename,
 
 } // namespace
 
-#endif
+#endif // __LTP_LSTMSDPARSER_CPYPDICT_H__

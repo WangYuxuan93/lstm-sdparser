@@ -207,6 +207,12 @@ cnn_LIB_DEPENDS:STATIC=
 //Value Computed by CMake
 cnn_SOURCE_DIR:STATIC=/home/ritsu/work/parser/lstm-list-parser
 
+//Dependencies for target
+lstm_sdparser_shared_lib_LIB_DEPENDS:STATIC=
+
+//Dependencies for target
+lstm_sdparser_static_lib_LIB_DEPENDS:STATIC=
+
 
 ########################
 # INTERNAL cache entries

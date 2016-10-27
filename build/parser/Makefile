@@ -66,40 +66,6 @@ list_install_components/fast: list_install_components
 
 .PHONY : list_install_components/fast
 
-# Special rule for the target install
-install: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
-	/usr/local/bin/cmake -P cmake_install.cmake
-.PHONY : install
-
-# Special rule for the target install
-install/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
-	/usr/local/bin/cmake -P cmake_install.cmake
-.PHONY : install/fast
-
-# Special rule for the target rebuild_cache
-rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/local/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : rebuild_cache
-
-# Special rule for the target rebuild_cache
-rebuild_cache/fast: rebuild_cache
-
-.PHONY : rebuild_cache/fast
-
-# Special rule for the target edit_cache
-edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
-	/usr/local/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
-.PHONY : edit_cache
-
-# Special rule for the target edit_cache
-edit_cache/fast: edit_cache
-
-.PHONY : edit_cache/fast
-
 # Special rule for the target install/strip
 install/strip: preinstall
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing the project stripped..."
@@ -132,6 +98,40 @@ test:
 test/fast: test
 
 .PHONY : test/fast
+
+# Special rule for the target edit_cache
+edit_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
+	/usr/local/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+.PHONY : edit_cache
+
+# Special rule for the target edit_cache
+edit_cache/fast: edit_cache
+
+.PHONY : edit_cache/fast
+
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	/usr/local/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
+
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
+
+.PHONY : rebuild_cache/fast
+
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	/usr/local/bin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	/usr/local/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -180,6 +180,78 @@ lstm-parse/fast:
 	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm-parse.dir/build.make parser/CMakeFiles/lstm-parse.dir/build
 .PHONY : lstm-parse/fast
 
+# Convenience name for target.
+parser/CMakeFiles/lstm_par.dir/rule:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f CMakeFiles/Makefile2 parser/CMakeFiles/lstm_par.dir/rule
+.PHONY : parser/CMakeFiles/lstm_par.dir/rule
+
+# Convenience name for target.
+lstm_par: parser/CMakeFiles/lstm_par.dir/rule
+
+.PHONY : lstm_par
+
+# fast build rule for target.
+lstm_par/fast:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_par.dir/build.make parser/CMakeFiles/lstm_par.dir/build
+.PHONY : lstm_par/fast
+
+# Convenience name for target.
+parser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f CMakeFiles/Makefile2 parser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule
+.PHONY : parser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule
+
+# Convenience name for target.
+lstm_sdparser_shared_lib: parser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule
+
+.PHONY : lstm_sdparser_shared_lib
+
+# fast build rule for target.
+lstm_sdparser_shared_lib/fast:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build
+.PHONY : lstm_sdparser_shared_lib/fast
+
+# Convenience name for target.
+parser/CMakeFiles/lstm_sdparser_static_lib.dir/rule:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f CMakeFiles/Makefile2 parser/CMakeFiles/lstm_sdparser_static_lib.dir/rule
+.PHONY : parser/CMakeFiles/lstm_sdparser_static_lib.dir/rule
+
+# Convenience name for target.
+lstm_sdparser_static_lib: parser/CMakeFiles/lstm_sdparser_static_lib.dir/rule
+
+.PHONY : lstm_sdparser_static_lib
+
+# fast build rule for target.
+lstm_sdparser_static_lib/fast:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/build
+.PHONY : lstm_sdparser_static_lib/fast
+
+lstm_par.o: lstm_par.cpp.o
+
+.PHONY : lstm_par.o
+
+# target to build an object file
+lstm_par.cpp.o:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_par.dir/build.make parser/CMakeFiles/lstm_par.dir/lstm_par.cpp.o
+.PHONY : lstm_par.cpp.o
+
+lstm_par.i: lstm_par.cpp.i
+
+.PHONY : lstm_par.i
+
+# target to preprocess a source file
+lstm_par.cpp.i:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_par.dir/build.make parser/CMakeFiles/lstm_par.dir/lstm_par.cpp.i
+.PHONY : lstm_par.cpp.i
+
+lstm_par.s: lstm_par.cpp.s
+
+.PHONY : lstm_par.s
+
+# target to generate assembly for a file
+lstm_par.cpp.s:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_par.dir/build.make parser/CMakeFiles/lstm_par.dir/lstm_par.cpp.s
+.PHONY : lstm_par.cpp.s
+
 lstm_sdparser.o: lstm_sdparser.cpp.o
 
 .PHONY : lstm_sdparser.o
@@ -187,6 +259,8 @@ lstm_sdparser.o: lstm_sdparser.cpp.o
 # target to build an object file
 lstm_sdparser.cpp.o:
 	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm-parse.dir/build.make parser/CMakeFiles/lstm-parse.dir/lstm_sdparser.cpp.o
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/lstm_sdparser.cpp.o
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/lstm_sdparser.cpp.o
 .PHONY : lstm_sdparser.cpp.o
 
 lstm_sdparser.i: lstm_sdparser.cpp.i
@@ -196,6 +270,8 @@ lstm_sdparser.i: lstm_sdparser.cpp.i
 # target to preprocess a source file
 lstm_sdparser.cpp.i:
 	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm-parse.dir/build.make parser/CMakeFiles/lstm-parse.dir/lstm_sdparser.cpp.i
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/lstm_sdparser.cpp.i
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/lstm_sdparser.cpp.i
 .PHONY : lstm_sdparser.cpp.i
 
 lstm_sdparser.s: lstm_sdparser.cpp.s
@@ -205,7 +281,39 @@ lstm_sdparser.s: lstm_sdparser.cpp.s
 # target to generate assembly for a file
 lstm_sdparser.cpp.s:
 	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm-parse.dir/build.make parser/CMakeFiles/lstm-parse.dir/lstm_sdparser.cpp.s
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/lstm_sdparser.cpp.s
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/lstm_sdparser.cpp.s
 .PHONY : lstm_sdparser.cpp.s
+
+lstm_sdparser_dll.o: lstm_sdparser_dll.cpp.o
+
+.PHONY : lstm_sdparser_dll.o
+
+# target to build an object file
+lstm_sdparser_dll.cpp.o:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/lstm_sdparser_dll.cpp.o
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/lstm_sdparser_dll.cpp.o
+.PHONY : lstm_sdparser_dll.cpp.o
+
+lstm_sdparser_dll.i: lstm_sdparser_dll.cpp.i
+
+.PHONY : lstm_sdparser_dll.i
+
+# target to preprocess a source file
+lstm_sdparser_dll.cpp.i:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/lstm_sdparser_dll.cpp.i
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/lstm_sdparser_dll.cpp.i
+.PHONY : lstm_sdparser_dll.cpp.i
+
+lstm_sdparser_dll.s: lstm_sdparser_dll.cpp.s
+
+.PHONY : lstm_sdparser_dll.s
+
+# target to generate assembly for a file
+lstm_sdparser_dll.cpp.s:
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/lstm_sdparser_dll.cpp.s
+	cd /home/ritsu/work/parser/lstm-list-parser/build && $(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/lstm_sdparser_dll.cpp.s
+.PHONY : lstm_sdparser_dll.cpp.s
 
 main.o: main.cpp.o
 
@@ -240,17 +348,26 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
+	@echo "... lstm_par"
 	@echo "... list_install_components"
-	@echo "... install"
-	@echo "... rebuild_cache"
-	@echo "... edit_cache"
-	@echo "... lstm-parse"
+	@echo "... lstm_sdparser_static_lib"
 	@echo "... install/strip"
 	@echo "... install/local"
+	@echo "... lstm_sdparser_shared_lib"
+	@echo "... lstm-parse"
 	@echo "... test"
+	@echo "... edit_cache"
+	@echo "... rebuild_cache"
+	@echo "... install"
+	@echo "... lstm_par.o"
+	@echo "... lstm_par.i"
+	@echo "... lstm_par.s"
 	@echo "... lstm_sdparser.o"
 	@echo "... lstm_sdparser.i"
 	@echo "... lstm_sdparser.s"
+	@echo "... lstm_sdparser_dll.o"
+	@echo "... lstm_sdparser_dll.i"
+	@echo "... lstm_sdparser_dll.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

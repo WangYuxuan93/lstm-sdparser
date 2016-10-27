@@ -47,5 +47,8 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "cnn/cnn/CMakeFiles/cnn.dir/DependInfo.cmake"
+  "parser/CMakeFiles/lstm_par.dir/DependInfo.cmake"
+  "parser/CMakeFiles/lstm_sdparser_static_lib.dir/DependInfo.cmake"
+  "parser/CMakeFiles/lstm_sdparser_shared_lib.dir/DependInfo.cmake"
   "parser/CMakeFiles/lstm-parse.dir/DependInfo.cmake"
   )

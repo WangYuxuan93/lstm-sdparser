@@ -42,10 +42,6 @@ namespace po = boost::program_options;
 constexpr const char* ROOT_SYMBOL = "ROOT";
 const std::string REL_NULL = "-NULL-";
 
-map<string, double> evaluate(const std::vector<std::vector<std::vector<string>>>& refs, const std::vector<std::vector<std::vector<string>>>& hyps, 
-                                                std::map<int, std::vector<unsigned>>& sentencesPos, const unsigned punc);
-
-
 typedef struct Sizes {
 	unsigned kROOT_SYMBOL;
 	unsigned ACTION_SIZE;
@@ -75,6 +71,10 @@ public:
 	Sizes System_size;
 	std::string transition_system;
   Model model;
+
+  unsigned kUNK;
+  set<unsigned> training_vocab; // words available in the training corpus
+  set<unsigned> singletons;
 
   LSTMBuilder stack_lstm; // (layers, input, hidden, trainer)
   LSTMBuilder buffer_lstm;
@@ -109,10 +109,10 @@ public:
   ~LSTMParser();
 
   void set_options(Options opts);
-  bool load(string model_file, const unordered_map<unsigned, vector<float>>& pretrained, 
-                                const vector<unsigned> possible_actions, const Sizes System_size);
+  bool load(string model_file, string training_data_file, string word_embedding_file,
+                        string dev_data_file = "");
 
-  void setup_system();
+  void get_dynamic_infos();
 
   bool has_path_to(int w1, int w2, const std::vector<bool>  dir_graph []);
 
@@ -120,31 +120,44 @@ public:
 
   bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, const std::vector<bool>  dir_graph [], 
                                                 const std::vector<int>& stacki, const std::vector<int>& bufferi);
-  std::vector<std::vector<string>> compute_heads(const std::vector<unsigned>& sent, const std::vector<unsigned>& actions, 
-                                                const std::vector<string>& setOfActions);
+  std::vector<std::vector<string>> compute_heads(const std::vector<unsigned>& sent, const std::vector<unsigned>& actions);
   std::vector<unsigned> log_prob_parser(ComputationGraph* hg,
                      const std::vector<unsigned>& raw_sent,  // raw sentence
                      const std::vector<unsigned>& sent,  // sent with oovs replaced
                      const std::vector<unsigned>& sentPos,
                      const std::vector<unsigned>& correct_actions,
-                     const std::vector<string>& setOfActions,
-                     const map<unsigned, std::string>& intToWords,
+                     //const std::vector<string>& setOfActions,
+                     //const map<unsigned, std::string>& intToWords,
                      double *right, 
                      std::vector<std::vector<string>>& cand,
                      std::vector<Expression>* word_rep = NULL,
                      Expression * act_rep = NULL);
+
   int process_headless(std::vector<std::vector<string>>& hyp, std::vector<std::vector<string>>& cand, std::vector<Expression>& word_rep, 
-                                    Expression& act_rep, const std::vector<string>& setOfActions, 
-                                    const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos);
+                                    Expression& act_rep, const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos);
 
   void process_headless_search_all(const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos, 
                                                         const std::vector<string>& setOfActions, std::vector<Expression>& word_rep, 
                                                         Expression& act_rep, int n, int sent_len, int dir, map<int, double>* scores, 
                                                         map<int, string>* rels);
+
   void get_best_label(const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos, 
                                     ComputationGraph* hg, const std::vector<string>& setOfActions, 
                                     int s0, int b0, std::vector<Expression>& word_rep, Expression& act_rep, int sent_size, 
                                     int dir, double *score, string *rel);
+
+  void predict_dev();
+
+  void predict(std::vector<std::vector<string>> &hyp, const std::vector<std::string> & words,
+                          const std::vector<std::string> & postags);
+
+  void output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
+                  const vector<string>& sentenceUnkStrings, 
+                  //const map<unsigned, string>& intToWords, 
+                  //const map<unsigned, string>& intToPos, 
+                  const vector<vector<string>>& hyp);
+
+  map<string, double> evaluate(const std::vector<std::vector<std::vector<string>>>& refs, const std::vector<std::vector<std::vector<string>>>& hyps);
 };
 
 

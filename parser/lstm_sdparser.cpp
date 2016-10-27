@@ -19,14 +19,40 @@ void LSTMParser::set_options(Options opts){
   this->Opt = opts;
 }
 
-bool LSTMParser::load(string model_file, const unordered_map<unsigned, vector<float>>& pretrained, 
-                                const vector<unsigned> possible_actions, Sizes System_size){
-  this->pretrained = pretrained;
-  this->possible_actions = possible_actions;
-  this->System_size = System_size;
+bool LSTMParser::load(string model_file, string training_data_file, string word_embedding_file,
+                        string dev_data_file){
+  //this->pretrained = pretrained;
+  //this->possible_actions = possible_actions;
+  //this->System_size = System_size;
   this->transition_system = Opt.transition_system;
 
-  cerr << "setup model " << endl;
+  cerr << "Loading training data from " << training_data_file << endl;
+  corpus.load_correct_actions(training_data_file);
+
+  kUNK = corpus.get_or_add_word(cpyp::Corpus::UNK);
+
+  pretrained[kUNK] = std::vector<float>(Opt.PRETRAINED_DIM, 0);
+  cerr << "Loading word embeddings from " << word_embedding_file << " with" << Opt.PRETRAINED_DIM << " dimensions\n";
+  ifstream in(word_embedding_file.c_str());
+  string line;
+  getline(in, line);
+  std::vector<float> v(Opt.PRETRAINED_DIM, 0);
+  string word;
+  while (getline(in, line)) {
+    istringstream lin(line);
+    lin >> word;
+    for (unsigned i = 0; i < Opt.PRETRAINED_DIM; ++i) lin >> v[i];
+    unsigned id = corpus.get_or_add_word(word);
+    pretrained[id] = v;
+  }
+
+  get_dynamic_infos();
+
+  cerr << "Setup model in cnn" << endl;
+  //allocate memory for cnn
+  char ** k;
+  int agc = 2;
+  cnn::Initialize(agc, k);
 
   stack_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, &model);
   buffer_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, &model);
@@ -74,12 +100,32 @@ bool LSTMParser::load(string model_file, const unordered_map<unsigned, vector<fl
     ia >> this->model;
     cerr << "finish loading model" << endl;
   }
+  if (dev_data_file.length() > 0){
+    cerr << "loading dev data from " << dev_data_file << endl;
+    corpus.load_correct_actionsDev(dev_data_file);
+  }
 }
 
-void LSTMParser::setup_system(){
+void LSTMParser::get_dynamic_infos(){
   
+  System_size.kROOT_SYMBOL = corpus.get_or_add_word(ltp::lstmsdparser::ROOT_SYMBOL);
 
+  {  // compute the singletons in the parser's training data
+    map<unsigned, unsigned> counts;
+    for (auto sent : corpus.sentences)
+      for (auto word : sent.second) { training_vocab.insert(word); counts[word]++; }
+    for (auto wc : counts)
+      if (wc.second == 1) singletons.insert(wc.first);
+  }
 
+  cerr << "Number of words: " << corpus.nwords << endl;
+  System_size.VOCAB_SIZE = corpus.nwords + 1;
+  //ACTION_SIZE = corpus.nactions + 1;
+  System_size.ACTION_SIZE = corpus.nactions + 30; // leave places for new actions in test set
+  System_size.POS_SIZE = corpus.npos + 10;  // bad way of dealing with the fact that we may see new POS tags in the test set
+  possible_actions.resize(corpus.nactions);
+  for (unsigned i = 0; i < corpus.nactions; ++i)
+    possible_actions[i] = i;
 }
 
 bool LSTMParser::has_path_to(int w1, int w2, const vector<bool>  dir_graph []){
@@ -167,11 +213,12 @@ bool LSTMParser::has_path_to(int w1, int w2, const vector<bool>  dir_graph []){
     return false;
 }
 
-vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, const vector<unsigned>& actions, 
-                                                                                    const vector<string>& setOfActions) {
+vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, const vector<unsigned>& actions) {
   //map<int,int> heads;
   //map<int,string> r;
   //map<int,string>& rels = (pr ? *pr : r);
+
+    const vector<string>& setOfActions = corpus.actions;
     unsigned sent_len = sent.size();
     vector<vector<string>> graph;
      
@@ -309,12 +356,15 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                      const vector<unsigned>& sent,  // sent with oovs replaced
                      const vector<unsigned>& sentPos,
                      const vector<unsigned>& correct_actions,
-                     const vector<string>& setOfActions,
-                     const map<unsigned, std::string>& intToWords,
+                     //const vector<string>& setOfActions,
+                     //const map<unsigned, std::string>& intToWords,
                      double *right, 
                      vector<vector<string>>& cand,
                      vector<Expression>* word_rep,
                      Expression * act_rep) {
+    const vector<string> setOfActions = corpus.actions;
+    const map<unsigned, std::string> intToWords = corpus.intToWords;
+
     vector<unsigned> results;
     const bool build_training_graph = correct_actions.size() > 0;
     //init word representation
@@ -880,9 +930,9 @@ bool LSTMParser::has_path_to(int w1, int w2, const vector<vector<string>>& graph
 }
 
 int LSTMParser::process_headless(vector<vector<string>>& hyp, vector<vector<string>>& cand, vector<Expression>& word_rep, 
-                                    Expression& act_rep, const vector<string>& setOfActions, 
-                                    const vector<unsigned>& sent, const vector<unsigned>& sentPos){
+                                    Expression& act_rep, const vector<unsigned>& sent, const vector<unsigned>& sentPos){
     //cerr << "process headless" << endl;
+    const vector<string>& setOfActions = corpus.actions;
     int root = hyp.size() - 1;
     int miss_head_num = 0;
     bool has_head_flag = false;
@@ -961,8 +1011,181 @@ int LSTMParser::process_headless(vector<vector<string>>& hyp, vector<vector<stri
     return miss_head_num;
 }
 
-map<string, double> evaluate(const vector<vector<vector<string>>>& refs, const vector<vector<vector<string>>>& hyps, 
-                                                std::map<int, std::vector<unsigned>>& sentencesPos, const unsigned punc) {
+void LSTMParser::predict_dev() {
+    double llh = 0;
+    double trs = 0;
+    double right = 0;
+    //double correct_heads = 0;
+    //double total_heads = 0;
+    std::vector<std::vector<std::vector<string>>> refs, hyps;
+    auto t_start = std::chrono::high_resolution_clock::now();
+    unsigned corpus_size = corpus.nsentencesDev;
+
+    int miss_head = 0;
+
+    for (unsigned sii = 0; sii < corpus_size; ++sii) {
+      const std::vector<unsigned>& sentence = corpus.sentencesDev[sii];
+      const std::vector<unsigned>& sentencePos = corpus.sentencesPosDev[sii];
+      const std::vector<string>& sentenceUnkStr = corpus.sentencesStrDev[sii]; 
+      const std::vector<unsigned>& actions = corpus.correct_act_sentDev[sii];
+      std::vector<unsigned> tsentence=sentence;
+      for (auto& w : tsentence)
+        if (training_vocab.count(w) == 0) w = kUNK;
+      double lp = 0;
+      std::vector<unsigned> pred;
+      std::vector<std::vector<string>> cand;
+      std::vector<Expression> word_rep; // word representations
+      Expression act_rep; // final action representation
+      //cerr<<"compute action" << endl;
+
+      {
+      ComputationGraph cg;
+      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
+                                                         &right, cand, &word_rep, &act_rep);
+      }
+      /*cerr << cand.size() << endl;
+      for (unsigned i = 0; i < cand.size(); ++i){
+        for (unsigned j = 0; j < cand.size(); ++j){
+            if (cand[i][j] != REL_NULL)
+                cerr << "from " << i << " to " << j << " rel: " << cand[i][j] << endl;
+        }
+      }*/
+      llh -= lp;
+      trs += actions.size();
+      //map<int, string> rel_ref, rel_hyp;
+      //cerr << "compute heads "<<endl;
+      std::vector<std::vector<string>> ref = compute_heads(sentence, actions);
+      std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
+      refs.push_back(ref);
+      hyps.push_back(hyp);
+
+      /*for (unsigned i = 0; i < hyp.size(); ++i){
+        for (unsigned j = 0; j < hyp.size(); ++j){
+            if (hyp[i][j] != REL_NULL)
+                cerr << "from " << i << " to " << j << " rel: " << hyp[i][j] << endl;
+        }
+      }*/
+
+      if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+            miss_head++;
+            cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
+        }
+        //cerr<<"write to file" <<endl;
+      output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
+      //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
+      //total_heads += sentence.size() - 1;
+    }
+    //cerr << "miss head number: " << miss_head << endl;
+    map<string, double> results = evaluate(refs, hyps);
+    auto t_end = std::chrono::high_resolution_clock::now();
+    cerr << "TEST llh=" << llh << " ppl: " << exp(llh / trs) << " err: " << (trs - right) / trs 
+    << " LF: " << results["LF"] << " UF:" << results["UF"]  << " LP:" << results["LP"] << " LR:" << results["LR"] 
+    << " UP:" << results["UP"] << " UR:" <<results["UR"]  << "\t[" << corpus_size << " sents in " 
+        << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
+}
+
+void LSTMParser::predict(std::vector<std::vector<string>> &hyp, const std::vector<std::string> & words,
+                          const std::vector<std::string> & postags) {
+    std::vector<unsigned> sentence;
+    std::vector<unsigned> sentencePos;
+    std::vector<std::string> sentenceUnkStr;
+    std::string word;
+    std::string pos;
+
+    for (int i = 0; i < words.size(); i++){
+        word = words[i];
+        pos = postags[i];
+        // new POS tag
+        if (corpus.posToInt[pos] == 0) {
+            corpus.posToInt[pos] = corpus.maxPos;
+            corpus.intToPos[corpus.maxPos] = pos;
+            corpus.npos = corpus.maxPos;
+            corpus.maxPos++;
+        }
+        // add an empty string for any token except OOVs (it is easy to 
+        // recover the surface form of non-OOV using intToWords(id)).
+        sentenceUnkStr.push_back("");
+        // OOV word
+        if (corpus.wordsToInt[word] == 0) {
+            if (corpus.USE_SPELLING) {
+              corpus.max = corpus.nwords + 1;
+              //std::cerr<< "max:" << max << "\n";
+              corpus.wordsToInt[word] = corpus.max;
+              corpus.intToWords[corpus.max] = word;
+              corpus.nwords = corpus.max;
+            } else {
+              // save the surface form of this OOV before overwriting it.
+              sentenceUnkStr[sentenceUnkStr.size()-1] = word;
+              word = corpus.UNK;
+            }
+        }
+        sentence.push_back(corpus.wordsToInt[word]);
+        sentencePos.push_back(corpus.posToInt[pos]);
+    }
+
+    std::vector<unsigned> tsentence=sentence;
+      for (auto& w : tsentence)
+        if (training_vocab.count(w) == 0) w = kUNK;
+      std::vector<unsigned> pred;
+      std::vector<std::vector<string>> cand;
+      std::vector<Expression> word_rep; // word representations
+      Expression act_rep; // final action representation
+      double right = 0;
+      {
+      ComputationGraph cg;
+      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
+                                                         &right, cand, &word_rep, &act_rep);
+      }
+      hyp = compute_heads(sentence, pred);
+      //cerr << "hyp length: " << hyp.size() << " " << hyp[0].size() << endl;
+      if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+            cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
+      }
+    //output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
+}
+
+void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
+                  const vector<string>& sentenceUnkStrings, 
+                  const vector<vector<string>>& hyp) {
+    const map<unsigned, string>& intToWords = corpus.intToWords;
+    const map<unsigned, string>& intToPos = corpus.intToPos;
+    for (unsigned i = 0; i < (sentence.size()-1); ++i) {
+        auto index = i + 1;
+        assert(i < sentenceUnkStrings.size() && 
+            ((sentence[i] == corpus.get_or_add_word(cpyp::Corpus::UNK) &&
+                sentenceUnkStrings[i].size() > 0) ||
+                (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
+                sentenceUnkStrings[i].size() == 0 &&
+                intToWords.find(sentence[i]) != intToWords.end())));
+        string wit = (sentenceUnkStrings[i].size() > 0)? 
+        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
+        auto pit = intToPos.find(pos[i]);
+        for (unsigned j = 0; j < sentence.size() ; ++j){
+            if (hyp[j][i] != ltp::lstmsdparser::REL_NULL){
+                auto hyp_head = j + 1;
+                if (hyp_head == sentence.size()) hyp_head = 0;
+                auto hyp_rel = hyp[j][i];
+                cout << index << '\t'       // 1. ID 
+                    << wit << '\t'         // 2. FORM
+                    << "_" << '\t'         // 3. LEMMA 
+                    << "_" << '\t'         // 4. CPOSTAG 
+                    << pit->second << '\t' // 5. POSTAG
+                    << "_" << '\t'         // 6. FEATS
+                    << hyp_head << '\t'    // 7. HEAD
+                    << hyp_rel << '\t'     // 8. DEPREL
+                    << "_" << '\t'         // 9. PHEAD
+                    << "_" << endl;        // 10. PDEPREL
+            }
+        }
+  }
+  cout << endl;
+}
+
+
+map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& refs, const vector<vector<vector<string>>>& hyps) {
+
+    std::map<int, std::vector<unsigned>>& sentencesPos = corpus.sentencesPosDev;
+    const unsigned punc = corpus.posToInt["PU"];
     assert(refs.size() == hyps.size());
     int correct_arcs = 0; // unlabeled
     int correct_arcs_wo_punc = 0;

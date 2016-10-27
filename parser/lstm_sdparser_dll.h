@@ -23,7 +23,8 @@
  *  @param[in] path the path of the model
  *  @return void * the pointer to the segmentor
  */
-LSTMSDPARSER_DLL_API void * lstmsdparser_create_parser(const char * path);
+LSTMSDPARSER_DLL_API void * lstmsdparser_create_parser(const char * model_file, const char * training_data_file, 
+            const char * word_embedding_file);
 
 /*
  * release the postagger resources
@@ -42,9 +43,8 @@ LSTMSDPARSER_DLL_API int lstmsdparser_release_parser(void * parser);
  *                          are not legal, return 0
  */
 LSTMSDPARSER_DLL_API int lstmsdparser_parse(void * parser,
-        const std::vector< std::string > & words,
-        const std::vector< std::string > & postags,
-        std::vector<int> & heads,
-        std::vector<std::string> & deprels);
+                 const std::vector<std::string> & words,
+                 const std::vector<std::string> & postags,
+                 std::vector<std::vector<std::string>> & hyp);
 
 #endif  //  end for __LTP_LSTMSDPARSER_DLL_H__
