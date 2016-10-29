@@ -1,0 +1,1 @@
+./lstm-parse -T /home/ritsu/work/data/oracle/text.train.list.oracle -d /home/ritsu/work/data/oracle/text.test.list.oracle -w /home/ritsu/work/data/giga-min_10-100.bin -s list -k text --pretrained_dim 100 --hidden_dim 200 --lstm_input_dim 200 --input_dim 100 --action_dim 50 --pos_dim 50 --rel_dim 50 -P -m /home/ritsu/work/data/lstm/parser_pos_text_2_100_200_50_200_50_50.params

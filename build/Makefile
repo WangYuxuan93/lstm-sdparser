@@ -188,7 +188,7 @@ lstm-parse: cmake_check_build_system
 
 # fast build rule for target.
 lstm-parse/fast:
-	$(MAKE) -f parser/CMakeFiles/lstm-parse.dir/build.make parser/CMakeFiles/lstm-parse.dir/build
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm-parse.dir/build.make lstmsdparser/CMakeFiles/lstm-parse.dir/build
 .PHONY : lstm-parse/fast
 
 #=============================================================================
@@ -201,7 +201,7 @@ lstm_par: cmake_check_build_system
 
 # fast build rule for target.
 lstm_par/fast:
-	$(MAKE) -f parser/CMakeFiles/lstm_par.dir/build.make parser/CMakeFiles/lstm_par.dir/build
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_par.dir/build.make lstmsdparser/CMakeFiles/lstm_par.dir/build
 .PHONY : lstm_par/fast
 
 #=============================================================================
@@ -214,7 +214,7 @@ lstm_sdparser_shared_lib: cmake_check_build_system
 
 # fast build rule for target.
 lstm_sdparser_shared_lib/fast:
-	$(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build
 .PHONY : lstm_sdparser_shared_lib/fast
 
 #=============================================================================
@@ -227,7 +227,7 @@ lstm_sdparser_static_lib: cmake_check_build_system
 
 # fast build rule for target.
 lstm_sdparser_static_lib/fast:
-	$(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/build
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build
 .PHONY : lstm_sdparser_static_lib/fast
 
 # Help Target

@@ -13,7 +13,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "CMakeFiles/3.4.0/CMakeSystem.cmake"
   "../cmake/FindEigen3.cmake"
   "../cnn/cnn/CMakeLists.txt"
-  "../parser/CMakeLists.txt"
+  "../lstmsdparser/CMakeLists.txt"
   "/usr/local/share/cmake-3.4/Modules/CMakeCInformation.cmake"
   "/usr/local/share/cmake-3.4/Modules/CMakeCXXInformation.cmake"
   "/usr/local/share/cmake-3.4/Modules/CMakeCommonLanguageInclude.cmake"
@@ -41,14 +41,14 @@ set(CMAKE_MAKEFILE_OUTPUTS
 set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   "cnn/cnn/CMakeFiles/CMakeDirectoryInformation.cmake"
-  "parser/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "lstmsdparser/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "cnn/cnn/CMakeFiles/cnn.dir/DependInfo.cmake"
-  "parser/CMakeFiles/lstm_par.dir/DependInfo.cmake"
-  "parser/CMakeFiles/lstm_sdparser_static_lib.dir/DependInfo.cmake"
-  "parser/CMakeFiles/lstm_sdparser_shared_lib.dir/DependInfo.cmake"
-  "parser/CMakeFiles/lstm-parse.dir/DependInfo.cmake"
+  "lstmsdparser/CMakeFiles/lstm_par.dir/DependInfo.cmake"
+  "lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/DependInfo.cmake"
+  "lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/DependInfo.cmake"
+  "lstmsdparser/CMakeFiles/lstm-parse.dir/DependInfo.cmake"
   )

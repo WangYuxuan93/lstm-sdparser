@@ -35,7 +35,7 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("/home/ritsu/work/parser/lstm-list-parser/build/cnn/cnn/cmake_install.cmake")
-  include("/home/ritsu/work/parser/lstm-list-parser/build/parser/cmake_install.cmake")
+  include("/home/ritsu/work/parser/lstm-list-parser/build/lstmsdparser/cmake_install.cmake")
 
 endif()
 

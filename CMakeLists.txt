@@ -27,5 +27,5 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 add_subdirectory(cnn/cnn)
 # add_subdirectory(cnn/examples)
-add_subdirectory(parser)
+add_subdirectory(lstmsdparser)
 

@@ -193,10 +193,16 @@ CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 EIGEN3_INCLUDE_DIR:PATH=/usr/local/include/eigen3
 
 //Value Computed by CMake
-"cnn:parser_BINARY_DIR":STATIC=/home/ritsu/work/parser/lstm-list-parser/build/parser
+"cnn:lstmsdparser_BINARY_DIR":STATIC=/home/ritsu/work/parser/lstm-list-parser/build/lstmsdparser
 
 //Value Computed by CMake
-"cnn:parser_SOURCE_DIR":STATIC=/home/ritsu/work/parser/lstm-list-parser/parser
+"cnn:lstmsdparser_SOURCE_DIR":STATIC=/home/ritsu/work/parser/lstm-list-parser/lstmsdparser
+
+//Value Computed by CMake
+"cnn:parser_BINARY_DIR":STATIC=/home/ritsu/work/parser/lstm-list-parser/build/lstmsdparser
+
+//Value Computed by CMake
+"cnn:parser_SOURCE_DIR":STATIC=/home/ritsu/work/parser/lstm-list-parser/lstmsdparser
 
 //Value Computed by CMake
 cnn_BINARY_DIR:STATIC=/home/ritsu/work/parser/lstm-list-parser/build

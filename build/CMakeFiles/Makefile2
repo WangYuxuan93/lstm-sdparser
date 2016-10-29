@@ -115,175 +115,175 @@ clean: cnn/cnn/CMakeFiles/cnn.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Directory level rules for directory parser
+# Directory level rules for directory lstmsdparser
 
 # Convenience name for "all" pass in the directory.
-parser/all: parser/CMakeFiles/lstm-parse.dir/all
-parser/all: parser/CMakeFiles/lstm_par.dir/all
-parser/all: parser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
-parser/all: parser/CMakeFiles/lstm_sdparser_static_lib.dir/all
+lstmsdparser/all: lstmsdparser/CMakeFiles/lstm-parse.dir/all
+lstmsdparser/all: lstmsdparser/CMakeFiles/lstm_par.dir/all
+lstmsdparser/all: lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
+lstmsdparser/all: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
 
-.PHONY : parser/all
+.PHONY : lstmsdparser/all
 
 # Convenience name for "clean" pass in the directory.
-parser/clean: parser/CMakeFiles/lstm-parse.dir/clean
-parser/clean: parser/CMakeFiles/lstm_par.dir/clean
-parser/clean: parser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
-parser/clean: parser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
+lstmsdparser/clean: lstmsdparser/CMakeFiles/lstm-parse.dir/clean
+lstmsdparser/clean: lstmsdparser/CMakeFiles/lstm_par.dir/clean
+lstmsdparser/clean: lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
+lstmsdparser/clean: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
 
-.PHONY : parser/clean
+.PHONY : lstmsdparser/clean
 
 # Convenience name for "preinstall" pass in the directory.
-parser/preinstall:
+lstmsdparser/preinstall:
 
-.PHONY : parser/preinstall
+.PHONY : lstmsdparser/preinstall
 
 #=============================================================================
-# Target rules for target parser/CMakeFiles/lstm-parse.dir
+# Target rules for target lstmsdparser/CMakeFiles/lstm-parse.dir
 
 # All Build rule for target.
-parser/CMakeFiles/lstm-parse.dir/all: cnn/cnn/CMakeFiles/cnn.dir/all
-	$(MAKE) -f parser/CMakeFiles/lstm-parse.dir/build.make parser/CMakeFiles/lstm-parse.dir/depend
-	$(MAKE) -f parser/CMakeFiles/lstm-parse.dir/build.make parser/CMakeFiles/lstm-parse.dir/build
+lstmsdparser/CMakeFiles/lstm-parse.dir/all: cnn/cnn/CMakeFiles/cnn.dir/all
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm-parse.dir/build.make lstmsdparser/CMakeFiles/lstm-parse.dir/depend
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm-parse.dir/build.make lstmsdparser/CMakeFiles/lstm-parse.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=21,22,23 "Built target lstm-parse"
-.PHONY : parser/CMakeFiles/lstm-parse.dir/all
+.PHONY : lstmsdparser/CMakeFiles/lstm-parse.dir/all
 
 # Include target in all.
-all: parser/CMakeFiles/lstm-parse.dir/all
+all: lstmsdparser/CMakeFiles/lstm-parse.dir/all
 
 .PHONY : all
 
 # Build rule for subdir invocation for target.
-parser/CMakeFiles/lstm-parse.dir/rule: cmake_check_build_system
+lstmsdparser/CMakeFiles/lstm-parse.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 23
-	$(MAKE) -f CMakeFiles/Makefile2 parser/CMakeFiles/lstm-parse.dir/all
+	$(MAKE) -f CMakeFiles/Makefile2 lstmsdparser/CMakeFiles/lstm-parse.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 0
-.PHONY : parser/CMakeFiles/lstm-parse.dir/rule
+.PHONY : lstmsdparser/CMakeFiles/lstm-parse.dir/rule
 
 # Convenience name for target.
-lstm-parse: parser/CMakeFiles/lstm-parse.dir/rule
+lstm-parse: lstmsdparser/CMakeFiles/lstm-parse.dir/rule
 
 .PHONY : lstm-parse
 
 # clean rule for target.
-parser/CMakeFiles/lstm-parse.dir/clean:
-	$(MAKE) -f parser/CMakeFiles/lstm-parse.dir/build.make parser/CMakeFiles/lstm-parse.dir/clean
-.PHONY : parser/CMakeFiles/lstm-parse.dir/clean
+lstmsdparser/CMakeFiles/lstm-parse.dir/clean:
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm-parse.dir/build.make lstmsdparser/CMakeFiles/lstm-parse.dir/clean
+.PHONY : lstmsdparser/CMakeFiles/lstm-parse.dir/clean
 
 # clean rule for target.
-clean: parser/CMakeFiles/lstm-parse.dir/clean
+clean: lstmsdparser/CMakeFiles/lstm-parse.dir/clean
 
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target parser/CMakeFiles/lstm_par.dir
+# Target rules for target lstmsdparser/CMakeFiles/lstm_par.dir
 
 # All Build rule for target.
-parser/CMakeFiles/lstm_par.dir/all: cnn/cnn/CMakeFiles/cnn.dir/all
-parser/CMakeFiles/lstm_par.dir/all: parser/CMakeFiles/lstm_sdparser_static_lib.dir/all
-	$(MAKE) -f parser/CMakeFiles/lstm_par.dir/build.make parser/CMakeFiles/lstm_par.dir/depend
-	$(MAKE) -f parser/CMakeFiles/lstm_par.dir/build.make parser/CMakeFiles/lstm_par.dir/build
+lstmsdparser/CMakeFiles/lstm_par.dir/all: cnn/cnn/CMakeFiles/cnn.dir/all
+lstmsdparser/CMakeFiles/lstm_par.dir/all: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_par.dir/build.make lstmsdparser/CMakeFiles/lstm_par.dir/depend
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_par.dir/build.make lstmsdparser/CMakeFiles/lstm_par.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=24,25 "Built target lstm_par"
-.PHONY : parser/CMakeFiles/lstm_par.dir/all
+.PHONY : lstmsdparser/CMakeFiles/lstm_par.dir/all
 
 # Include target in all.
-all: parser/CMakeFiles/lstm_par.dir/all
+all: lstmsdparser/CMakeFiles/lstm_par.dir/all
 
 .PHONY : all
 
 # Build rule for subdir invocation for target.
-parser/CMakeFiles/lstm_par.dir/rule: cmake_check_build_system
+lstmsdparser/CMakeFiles/lstm_par.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 25
-	$(MAKE) -f CMakeFiles/Makefile2 parser/CMakeFiles/lstm_par.dir/all
+	$(MAKE) -f CMakeFiles/Makefile2 lstmsdparser/CMakeFiles/lstm_par.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 0
-.PHONY : parser/CMakeFiles/lstm_par.dir/rule
+.PHONY : lstmsdparser/CMakeFiles/lstm_par.dir/rule
 
 # Convenience name for target.
-lstm_par: parser/CMakeFiles/lstm_par.dir/rule
+lstm_par: lstmsdparser/CMakeFiles/lstm_par.dir/rule
 
 .PHONY : lstm_par
 
 # clean rule for target.
-parser/CMakeFiles/lstm_par.dir/clean:
-	$(MAKE) -f parser/CMakeFiles/lstm_par.dir/build.make parser/CMakeFiles/lstm_par.dir/clean
-.PHONY : parser/CMakeFiles/lstm_par.dir/clean
+lstmsdparser/CMakeFiles/lstm_par.dir/clean:
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_par.dir/build.make lstmsdparser/CMakeFiles/lstm_par.dir/clean
+.PHONY : lstmsdparser/CMakeFiles/lstm_par.dir/clean
 
 # clean rule for target.
-clean: parser/CMakeFiles/lstm_par.dir/clean
+clean: lstmsdparser/CMakeFiles/lstm_par.dir/clean
 
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target parser/CMakeFiles/lstm_sdparser_shared_lib.dir
+# Target rules for target lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir
 
 # All Build rule for target.
-parser/CMakeFiles/lstm_sdparser_shared_lib.dir/all:
-	$(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/depend
-	$(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build
+lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/all:
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/depend
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=26,27,28 "Built target lstm_sdparser_shared_lib"
-.PHONY : parser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
+.PHONY : lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
 
 # Include target in all.
-all: parser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
+all: lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
 
 .PHONY : all
 
 # Build rule for subdir invocation for target.
-parser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule: cmake_check_build_system
+lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 3
-	$(MAKE) -f CMakeFiles/Makefile2 parser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
+	$(MAKE) -f CMakeFiles/Makefile2 lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 0
-.PHONY : parser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule
+.PHONY : lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule
 
 # Convenience name for target.
-lstm_sdparser_shared_lib: parser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule
+lstm_sdparser_shared_lib: lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/rule
 
 .PHONY : lstm_sdparser_shared_lib
 
 # clean rule for target.
-parser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean:
-	$(MAKE) -f parser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
-.PHONY : parser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
+lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean:
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
+.PHONY : lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
 
 # clean rule for target.
-clean: parser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
+clean: lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
 
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target parser/CMakeFiles/lstm_sdparser_static_lib.dir
+# Target rules for target lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir
 
 # All Build rule for target.
-parser/CMakeFiles/lstm_sdparser_static_lib.dir/all:
-	$(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/depend
-	$(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/build
+lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all:
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/depend
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=29,30,31 "Built target lstm_sdparser_static_lib"
-.PHONY : parser/CMakeFiles/lstm_sdparser_static_lib.dir/all
+.PHONY : lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
 
 # Include target in all.
-all: parser/CMakeFiles/lstm_sdparser_static_lib.dir/all
+all: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
 
 .PHONY : all
 
 # Build rule for subdir invocation for target.
-parser/CMakeFiles/lstm_sdparser_static_lib.dir/rule: cmake_check_build_system
+lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 3
-	$(MAKE) -f CMakeFiles/Makefile2 parser/CMakeFiles/lstm_sdparser_static_lib.dir/all
+	$(MAKE) -f CMakeFiles/Makefile2 lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 0
-.PHONY : parser/CMakeFiles/lstm_sdparser_static_lib.dir/rule
+.PHONY : lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/rule
 
 # Convenience name for target.
-lstm_sdparser_static_lib: parser/CMakeFiles/lstm_sdparser_static_lib.dir/rule
+lstm_sdparser_static_lib: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/rule
 
 .PHONY : lstm_sdparser_static_lib
 
 # clean rule for target.
-parser/CMakeFiles/lstm_sdparser_static_lib.dir/clean:
-	$(MAKE) -f parser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make parser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
-.PHONY : parser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
+lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/clean:
+	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
+.PHONY : lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
 
 # clean rule for target.
-clean: parser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
+clean: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
 
 .PHONY : clean
 
