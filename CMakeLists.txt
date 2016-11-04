@@ -20,8 +20,8 @@ include_directories(${Boost_INCLUDE_DIR})
 set(LIBS ${LIBS} ${Boost_LIBRARIES})
 
 # look for Eigen
-#find_package(Eigen3 REQUIRED)
-#include_directories(${EIGEN3_INCLUDE_DIR})
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 include_directories ( ${PROJECT_SOURCE_DIR}/eigen-3.2.4/)
 
