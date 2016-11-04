@@ -1,2 +1,0 @@
-/usr/bin/ar qc liblstm_sdparser.a  CMakeFiles/lstm_sdparser_static_lib.dir/lstm_sdparser_dll.cpp.o CMakeFiles/lstm_sdparser_static_lib.dir/lstm_sdparser.cpp.o
-/usr/bin/ranlib liblstm_sdparser.a

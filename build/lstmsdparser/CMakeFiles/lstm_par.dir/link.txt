@@ -1,1 +1,0 @@
-/usr/bin/c++   -Wall -std=c++11 -O3 -g -pg   CMakeFiles/lstm_par.dir/lstm_par.cpp.o  -o lstm_par -rdynamic liblstm_sdparser.a ../cnn/cnn/libcnn.a /usr/local/lib/libboost_program_options.so.1.61.0 /usr/local/lib/libboost_serialization.so.1.61.0 -lpthread 
