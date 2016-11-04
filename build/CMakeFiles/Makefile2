@@ -119,7 +119,6 @@ clean: cnn/cnn/CMakeFiles/cnn.dir/clean
 
 # Convenience name for "all" pass in the directory.
 lstmsdparser/all: lstmsdparser/CMakeFiles/lstm-parse.dir/all
-lstmsdparser/all: lstmsdparser/CMakeFiles/lstm_par.dir/all
 lstmsdparser/all: lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
 lstmsdparser/all: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
 
@@ -127,7 +126,6 @@ lstmsdparser/all: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
 
 # Convenience name for "clean" pass in the directory.
 lstmsdparser/clean: lstmsdparser/CMakeFiles/lstm-parse.dir/clean
-lstmsdparser/clean: lstmsdparser/CMakeFiles/lstm_par.dir/clean
 lstmsdparser/clean: lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
 lstmsdparser/clean: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/clean
 
@@ -176,51 +174,13 @@ clean: lstmsdparser/CMakeFiles/lstm-parse.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target lstmsdparser/CMakeFiles/lstm_par.dir
-
-# All Build rule for target.
-lstmsdparser/CMakeFiles/lstm_par.dir/all: cnn/cnn/CMakeFiles/cnn.dir/all
-lstmsdparser/CMakeFiles/lstm_par.dir/all: lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
-	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_par.dir/build.make lstmsdparser/CMakeFiles/lstm_par.dir/depend
-	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_par.dir/build.make lstmsdparser/CMakeFiles/lstm_par.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=24,25 "Built target lstm_par"
-.PHONY : lstmsdparser/CMakeFiles/lstm_par.dir/all
-
-# Include target in all.
-all: lstmsdparser/CMakeFiles/lstm_par.dir/all
-
-.PHONY : all
-
-# Build rule for subdir invocation for target.
-lstmsdparser/CMakeFiles/lstm_par.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 25
-	$(MAKE) -f CMakeFiles/Makefile2 lstmsdparser/CMakeFiles/lstm_par.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles 0
-.PHONY : lstmsdparser/CMakeFiles/lstm_par.dir/rule
-
-# Convenience name for target.
-lstm_par: lstmsdparser/CMakeFiles/lstm_par.dir/rule
-
-.PHONY : lstm_par
-
-# clean rule for target.
-lstmsdparser/CMakeFiles/lstm_par.dir/clean:
-	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_par.dir/build.make lstmsdparser/CMakeFiles/lstm_par.dir/clean
-.PHONY : lstmsdparser/CMakeFiles/lstm_par.dir/clean
-
-# clean rule for target.
-clean: lstmsdparser/CMakeFiles/lstm_par.dir/clean
-
-.PHONY : clean
-
-#=============================================================================
 # Target rules for target lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir
 
 # All Build rule for target.
 lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/all:
 	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/depend
 	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=26,27,28 "Built target lstm_sdparser_shared_lib"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=24,25,26 "Built target lstm_sdparser_shared_lib"
 .PHONY : lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/all
 
 # Include target in all.
@@ -257,7 +217,7 @@ clean: lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir/clean
 lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all:
 	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/depend
 	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build.make lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=29,30,31 "Built target lstm_sdparser_static_lib"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ritsu/work/parser/lstm-list-parser/build/CMakeFiles --progress-num=27,28,29 "Built target lstm_sdparser_static_lib"
 .PHONY : lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir/all
 
 # Include target in all.

@@ -1,5 +1,4 @@
-/home/ritsu/work/parser/lstm-list-parser/build/lstmsdparser/CMakeFiles/lstm_par.dir
-/home/ritsu/work/parser/lstm-list-parser/build/cnn/cnn/CMakeFiles/cnn.dir
+/home/ritsu/work/parser/lstm-list-parser/build/lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir
 /home/ritsu/work/parser/lstm-list-parser/build/lstmsdparser/CMakeFiles/lstm-parse.dir
 /home/ritsu/work/parser/lstm-list-parser/build/lstmsdparser/CMakeFiles/lstm_sdparser_shared_lib.dir
-/home/ritsu/work/parser/lstm-list-parser/build/lstmsdparser/CMakeFiles/lstm_sdparser_static_lib.dir
+/home/ritsu/work/parser/lstm-list-parser/build/cnn/cnn/CMakeFiles/cnn.dir

@@ -20,6 +20,7 @@ class Corpus {
  //typedef std::unordered_map<std::string, unsigned, std::hash<std::string> > Map;
 // typedef std::unordered_map<unsigned,std::string, std::hash<std::string> > ReverseMap;
 public: 
+   bool DEBUG = false;
    bool USE_SPELLING=false; 
 
    std::map<int,std::vector<unsigned>> correct_act_sent;
@@ -233,17 +234,20 @@ inline void load_correct_actions(std::string file){
         intToWords[max]=oov;
         nwords=max;
         max++;*/
-
-	std::cerr<<"done"<<"\n";
-	for (auto a: actions) {
-		std::cerr<<a<<"\n";
-	}
+  if (DEBUG){
+	  std::cerr<<"done"<<"\n";
+	  for (auto a: actions) {
+		  std::cerr<<a<<"\n";
+	  }
+  }
 	nactions=actions.size();
+  if (DEBUG){
 	std::cerr<<"nactions:"<<nactions<<"\n";
         std::cerr<<"nwords:"<<nwords<<"\n";
 	for (unsigned i=0;i<npos;i++){
                 std::cerr<<i<<":"<<intToPos[i]<<"\n";
         }
+  }
 	nactions=actions.size();
 	
 }

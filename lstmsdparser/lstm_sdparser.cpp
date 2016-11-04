@@ -7,7 +7,7 @@ using namespace cnn::expr;
 using namespace cnn;
 using namespace std;
 namespace po = boost::program_options;
-
+bool DEBUG = true;
 
 //struct LSTMParser {
 
@@ -25,14 +25,15 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   //this->possible_actions = possible_actions;
   //this->System_size = System_size;
   this->transition_system = Opt.transition_system;
-
-  cerr << "Loading training data from " << training_data_file << endl;
+  if (DEBUG)
+    cerr << "Loading training data from " << training_data_file << endl;
   corpus.load_correct_actions(training_data_file);
 
   kUNK = corpus.get_or_add_word(cpyp::Corpus::UNK);
 
   pretrained[kUNK] = std::vector<float>(Opt.PRETRAINED_DIM, 0);
-  cerr << "Loading word embeddings from " << word_embedding_file << " with" << Opt.PRETRAINED_DIM << " dimensions\n";
+  if (DEBUG)
+    cerr << "Loading word embeddings from " << word_embedding_file << " with" << Opt.PRETRAINED_DIM << " dimensions\n";
   ifstream in(word_embedding_file.c_str());
   string line;
   getline(in, line);
@@ -47,8 +48,8 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   }
 
   get_dynamic_infos();
-
-  cerr << "Setup model in cnn" << endl;
+  if (DEBUG)
+    cerr << "Setup model in cnn" << endl;
   //allocate memory for cnn
   char ** k;
   int agc = 2;
@@ -94,16 +95,22 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
 
   //this->model = model;
   if (model_file.length() > 0) {
-    cerr << "loading model from " << model_file << endl;
+    if (DEBUG)
+      cerr << "loading model from " << model_file << endl;
     ifstream in(model_file.c_str());
     boost::archive::text_iarchive ia(in);
     ia >> this->model;
-    cerr << "finish loading model" << endl;
+    if (DEBUG)
+      cerr << "finish loading model" << endl;
   }
   if (dev_data_file.length() > 0){
-    cerr << "loading dev data from " << dev_data_file << endl;
+    if (DEBUG)
+      cerr << "loading dev data from " << dev_data_file << endl;
     corpus.load_correct_actionsDev(dev_data_file);
+    if (DEBUG)
+      cerr << "finish loading dev data" << endl;
   }
+  return true;
 }
 
 void LSTMParser::get_dynamic_infos(){
@@ -117,8 +124,8 @@ void LSTMParser::get_dynamic_infos(){
     for (auto wc : counts)
       if (wc.second == 1) singletons.insert(wc.first);
   }
-
-  cerr << "Number of words: " << corpus.nwords << endl;
+  if (DEBUG)
+    cerr << "Number of words: " << corpus.nwords << endl;
   System_size.VOCAB_SIZE = corpus.nwords + 1;
   //ACTION_SIZE = corpus.nactions + 1;
   System_size.ACTION_SIZE = corpus.nactions + 30; // leave places for new actions in test set
@@ -1005,7 +1012,7 @@ int LSTMParser::process_headless(vector<vector<string>>& hyp, vector<vector<stri
         if (hyp[root][i] != REL_NULL)
             root_num ++;
     if (root_num != 1){
-        cerr << "root error: " << root_num << endl;
+        cerr << "In Semantic Dependency Parser : Root Error: " << root_num << endl;
       }
     //cerr << "miss_head_num: " << miss_head_num << endl;
     return miss_head_num;
@@ -1072,16 +1079,27 @@ void LSTMParser::predict_dev() {
         }
         //cerr<<"write to file" <<endl;
       output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
+      if (sii%100 == 0)
+        cerr << "sentence: " << sii << endl;
       //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
       //total_heads += sentence.size() - 1;
     }
+    /*for (unsigned sii = 0; sii < corpus_size; ++sii) {
+      const std::vector<unsigned>& sentence = corpus.sentencesDev[sii];
+      const std::vector<unsigned>& sentencePos = corpus.sentencesPosDev[sii];
+      const std::vector<string>& sentenceUnkStr = corpus.sentencesStrDev[sii]; 
+      std::vector<std::vector<string>> hyp = hyps[sii];
+      output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
+    }*/
+
     //cerr << "miss head number: " << miss_head << endl;
     map<string, double> results = evaluate(refs, hyps);
     auto t_end = std::chrono::high_resolution_clock::now();
-    cerr << "TEST llh=" << llh << " ppl: " << exp(llh / trs) << " err: " << (trs - right) / trs 
-    << " LF: " << results["LF"] << " UF:" << results["UF"]  << " LP:" << results["LP"] << " LR:" << results["LR"] 
-    << " UP:" << results["UP"] << " UR:" <<results["UR"]  << "\t[" << corpus_size << " sents in " 
-        << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
+    if (DEBUG)
+      cerr << "TEST llh=" << llh << " ppl: " << exp(llh / trs) << " err: " << (trs - right) / trs 
+      << " LF: " << results["LF"] << " UF:" << results["UF"]  << " LP:" << results["LP"] << " LR:" << results["LR"] 
+      << " UP:" << results["UP"] << " UR:" <<results["UR"]  << "\t[" << corpus_size << " sents in " 
+      << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
 }
 
 void LSTMParser::predict(std::vector<std::vector<string>> &hyp, const std::vector<std::string> & words,

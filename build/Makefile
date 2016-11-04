@@ -192,19 +192,6 @@ lstm-parse/fast:
 .PHONY : lstm-parse/fast
 
 #=============================================================================
-# Target rules for targets named lstm_par
-
-# Build rule for target.
-lstm_par: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 lstm_par
-.PHONY : lstm_par
-
-# fast build rule for target.
-lstm_par/fast:
-	$(MAKE) -f lstmsdparser/CMakeFiles/lstm_par.dir/build.make lstmsdparser/CMakeFiles/lstm_par.dir/build
-.PHONY : lstm_par/fast
-
-#=============================================================================
 # Target rules for targets named lstm_sdparser_shared_lib
 
 # Build rule for target.
@@ -244,7 +231,6 @@ help:
 	@echo "... test"
 	@echo "... edit_cache"
 	@echo "... cnn"
-	@echo "... lstm_par"
 	@echo "... lstm_sdparser_static_lib"
 	@echo "... lstm_sdparser_shared_lib"
 	@echo "... lstm-parse"
