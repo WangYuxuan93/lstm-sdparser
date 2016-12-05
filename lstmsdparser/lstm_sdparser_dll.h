@@ -23,8 +23,7 @@
  *  @param[in] path the path of the model
  *  @return void * the pointer to the segmentor
  */
-LSTMSDPARSER_DLL_API void * lstmsdparser_create_parser(const char * model_file, const char * training_data_file, 
-            const char * word_embedding_file);
+LSTMSDPARSER_DLL_API void * lstmsdparser_create_parser(const char * data_dir);
 
 /*
  * release the postagger resources

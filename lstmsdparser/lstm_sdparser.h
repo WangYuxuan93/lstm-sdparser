@@ -29,7 +29,7 @@
 #include "cnn/nodes.h"
 #include "cnn/lstm.h"
 #include "cnn/rnn.h"
-#include "c2.h"
+#include "lstmsdparser/c2.h"
 
 namespace ltp {
 namespace lstmsdparser {
@@ -41,6 +41,7 @@ namespace po = boost::program_options;
 
 constexpr const char* ROOT_SYMBOL = "ROOT";
 const std::string REL_NULL = "-NULL-";
+const std::string REL_EXIST = "-EXIST-";
 
 typedef struct Sizes {
 	unsigned kROOT_SYMBOL;
@@ -62,8 +63,11 @@ typedef struct Options {
 	bool USE_POS; // true
 }Options;
 
+static volatile bool requested_stop;
+
 class LSTMParser {
 public:
+  bool DEBUG = false;
   cpyp::Corpus corpus;
   vector<unsigned> possible_actions;
 	unordered_map<unsigned, vector<float>> pretrained;
@@ -71,6 +75,7 @@ public:
 	Sizes System_size;
 	std::string transition_system;
   Model model;
+  
 
   unsigned kUNK;
   set<unsigned> training_vocab; // words available in the training corpus
@@ -118,7 +123,7 @@ public:
 
   bool has_path_to(int w1, int w2, const std::vector<std::vector<string>>& graph);
 
-  bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, const std::vector<bool>  dir_graph [], 
+  bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, const std::vector<std::vector<std::string>> dir_graph,//const std::vector<bool>  dir_graph [], 
                                                 const std::vector<int>& stacki, const std::vector<int>& bufferi);
   std::vector<std::vector<string>> compute_heads(const std::vector<unsigned>& sent, const std::vector<unsigned>& actions);
   std::vector<unsigned> log_prob_parser(ComputationGraph* hg,
@@ -145,6 +150,10 @@ public:
                                     ComputationGraph* hg, const std::vector<string>& setOfActions, 
                                     int s0, int b0, std::vector<Expression>& word_rep, Expression& act_rep, int sent_size, 
                                     int dir, double *score, string *rel);
+
+  static void signal_callback_handler(int /* signum */);
+
+  void train(const std::string fname, const unsigned unk_strategy, const double unk_prob);
 
   void predict_dev();
 

@@ -1,3 +1,5 @@
+include_directories (${PROJECT_SOURCE_DIR}/)
+
 set (lstm_sdparser_VERSION "0.0.1")
 set (lstm_sdparser_SRC
     lstm_sdparser.cpp
@@ -13,10 +15,10 @@ set_target_properties (lstm_sdparser_shared_lib    PROPERTIES
     OUTPUT_NAME     lstm_sdparser)
 
 # redirect output binary to tools/train
-add_executable(lstm-parse main.cpp ${lstm_sdparser_SRC})
-target_link_libraries(lstm-parse cnn ${Boost_LIBRARIES})
+add_executable(lstmparse main.cpp ${lstm_sdparser_SRC})
+target_link_libraries(lstmparse cnn ${Boost_LIBRARIES})
 
-add_executable(lstm-par lstm_par.cpp)
-target_link_libraries (lstm-par lstm_sdparser_static_lib cnn ${Boost_LIBRARIES})
+add_executable(lstm_par_cmdline lstm_par_cmdline.cpp)
+target_link_libraries (lstm_par_cmdline lstm_sdparser_static_lib cnn ${Boost_LIBRARIES})
 
 
