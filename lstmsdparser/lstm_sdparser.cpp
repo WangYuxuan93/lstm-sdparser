@@ -3,8 +3,8 @@
 namespace ltp {
 namespace lstmsdparser {
 
-using namespace cnn::expr;
-using namespace cnn;
+using namespace dynet::expr;
+using namespace dynet;
 using namespace std;
 namespace po = boost::program_options;
 
@@ -45,16 +45,23 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
 
   get_dynamic_infos();
   if (DEBUG)
-    cerr << "Setup model in cnn" << endl;
-  //allocate memory for cnn
-  char ** k;
-  int agc = 2;
-  cnn::Initialize(agc, k);
+    cerr << "Setup model in dynet" << endl;
+  //allocate memory for dynet
+  char ** argv = new char * [4];
+  int argc = 3;
+  argv[0] = "dynet";
+  argv[1] = "--dynet-mem";
+  argv[2] = "2000";
+  //argv[3] = nullptr;
+  //auto dyparams = dynet::extract_dynet_params(argc, argv);
+  dynet::initialize(argc, argv);
+  delete argv;
+  //dynet::initialize(dyparams);
 
-  stack_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, &model);
-  buffer_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, &model);
-  pass_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, &model);
-  action_lstm = LSTMBuilder(Opt.LAYERS, Opt.ACTION_DIM, Opt.HIDDEN_DIM, &model);
+  stack_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
+  buffer_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
+  pass_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
+  action_lstm = LSTMBuilder(Opt.LAYERS, Opt.ACTION_DIM, Opt.HIDDEN_DIM, model);
   p_w = model.add_lookup_parameters(System_size.VOCAB_SIZE, {Opt.INPUT_DIM});
   p_a = model.add_lookup_parameters(System_size.ACTION_SIZE, {Opt.ACTION_DIM});
   p_r = model.add_lookup_parameters(System_size.ACTION_SIZE, {Opt.REL_DIM});
@@ -80,13 +87,15 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
     p_p2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.POS_DIM});
   }
   if (pretrained.size() > 0) {
+    use_pretrained = true;
     p_t = model.add_lookup_parameters(System_size.VOCAB_SIZE, {Opt.PRETRAINED_DIM});
     for (auto it : pretrained)
-      p_t->Initialize(it.first, it.second);
+      p_t.initialize(it.first, it.second);
     p_t2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.PRETRAINED_DIM});
   }else {
-    p_t = nullptr;
-    p_t2l = nullptr;
+    use_pretrained = false;
+    //p_t = nullptr;
+    //p_t2l = nullptr;
   }
 
   //this->model = model;
@@ -421,7 +430,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     if (Opt.USE_POS)
       p2l = parameter(*hg, p_p2l);
     Expression t2l;
-    if (p_t2l)
+    if (use_pretrained)
       t2l = parameter(*hg, p_t2l);
     Expression p2a = parameter(*hg, p_p2a);
     Expression abias = parameter(*hg, p_abias);
@@ -442,7 +451,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         args.push_back(p2l);
         args.push_back(p);
       }
-      if (p_t && pretrained.count(raw_sent[i])) {  // include fixed pretrained vectors?
+      if (use_pretrained && pretrained.count(raw_sent[i])) {  // include fixed pretrained vectors?
         Expression t = const_lookup(*hg, p_t, raw_sent[i]);
         args.push_back(t2l);
         args.push_back(t);
@@ -517,7 +526,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
       // adist = log_softmax(r_t, current_valid_actions)
       Expression adiste = log_softmax(r_t, current_valid_actions);
-      vector<float> adist = as_vector(hg->incremental_forward());
+      vector<float> adist = as_vector(hg->incremental_forward(adiste));
       double best_score = adist[current_valid_actions[0]];
       unsigned best_a = current_valid_actions[0];
       for (unsigned i = 1; i < current_valid_actions.size(); ++i) {
@@ -839,7 +848,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     if (Opt.USE_POS)
       p2l = parameter(*hg, p_p2l);
     Expression t2l;
-    if (p_t2l)
+    if (use_pretrained)
       t2l = parameter(*hg, p_t2l);
     Expression p2a = parameter(*hg, p_p2a);
     Expression abias = parameter(*hg, p_abias);
@@ -858,7 +867,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         args.push_back(p2l);
         args.push_back(p);
     }
-    if (p_t && pretrained.count(sent[b0])) {  // include fixed pretrained vectors?
+    if (use_pretrained && pretrained.count(sent[b0])) {  // include fixed pretrained vectors?
         Expression t = const_lookup(*hg, p_t, sent[b0]);
         args.push_back(t2l);
         args.push_back(t);
@@ -883,7 +892,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         args.push_back(p2l);
         args.push_back(p);
     }
-    if (p_t && pretrained.count(sent[s0])) {  // include fixed pretrained vectors?
+    if (use_pretrained && pretrained.count(sent[s0])) {  // include fixed pretrained vectors?
         Expression t = const_lookup(*hg, p_t, sent[s0]);
         args.push_back(t2l);
         args.push_back(t);
@@ -915,7 +924,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
     // adist = log_softmax(r_t, current_valid_actions)
     Expression adiste = log_softmax(r_t, current_valid_actions);
-    vector<float> adist = as_vector(hg->incremental_forward());
+    vector<float> adist = as_vector(hg->incremental_forward(adiste));
     double second_score = - DBL_MAX;
     string second_a = REL_NULL;
     for (unsigned i = 1; i < current_valid_actions.size(); ++i) {
@@ -1031,7 +1040,7 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
     unsigned status_every_i_iterations = 100;
     int best_LF = 0;
     bool softlinkCreated = false;
-    SimpleSGDTrainer sgd(&model);
+    SimpleSGDTrainer sgd(model);
     sgd.eta_decay = 0.08;
     std::vector<unsigned> order(corpus.nsentences);
     for (unsigned i = 0; i < corpus.nsentences; ++i)
@@ -1064,7 +1073,7 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
            std::vector<unsigned> tsentence=sentence;
            if (unk_strategy == 1) {
              for (auto& w : tsentence)
-               if (singletons.count(w) && cnn::rand01() < unk_prob) w = kUNK;
+               if (singletons.count(w) && dynet::rand01() < unk_prob) w = kUNK;
            }
      const std::vector<unsigned>& sentencePos=corpus.sentencesPos[order[si]]; 
      const std::vector<unsigned>& actions=corpus.correct_act_sent[order[si]];
@@ -1073,12 +1082,12 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
            std::vector<std::vector<string>> cand;
 
            log_prob_parser(&hg,sentence,tsentence,sentencePos,actions,&right,cand);
-           double lp = as_scalar(hg.incremental_forward());
+           double lp = as_scalar(hg.incremental_forward((VariableIndex)(hg.nodes.size() - 1)));
            if (lp < 0) {
              cerr << "Log prob < 0 on sentence " << order[si] << ": lp=" << lp << endl;
              assert(lp >= 0.0);
            }
-           hg.backward();
+           hg.backward((VariableIndex)(hg.nodes.size() - 1));
            sgd.update(1.0);
            llh += lp;
            ++si;

@@ -23,19 +23,19 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/program_options.hpp>
 
-#include "cnn/training.h"
-#include "cnn/cnn.h"
-#include "cnn/expr.h"
-#include "cnn/nodes.h"
-#include "cnn/lstm.h"
-#include "cnn/rnn.h"
+#include "dynet/training.h"
+#include "dynet/dynet.h"
+#include "dynet/expr.h"
+#include "dynet/nodes.h"
+#include "dynet/lstm.h"
+#include "dynet/rnn.h"
 #include "lstmsdparser/c2.h"
 
 namespace ltp {
 namespace lstmsdparser {
 
-using namespace cnn::expr;
-using namespace cnn;
+using namespace dynet::expr;
+using namespace dynet;
 using namespace std;
 namespace po = boost::program_options;
 
@@ -75,8 +75,9 @@ public:
 	Sizes System_size;
 	std::string transition_system;
   Model model;
-  
 
+  bool use_pretrained; // True if use pretraiend word embedding
+  
   unsigned kUNK;
   set<unsigned> training_vocab; // words available in the training corpus
   set<unsigned> singletons;
@@ -85,30 +86,30 @@ public:
   LSTMBuilder buffer_lstm;
   LSTMBuilder pass_lstm; // lstm for pass buffer
   LSTMBuilder action_lstm;
-  LookupParameters* p_w; // word embeddings
-  LookupParameters* p_t; // pretrained word embeddings (not updated)
-  LookupParameters* p_a; // input action embeddings
-  LookupParameters* p_r; // relation embeddings
-  LookupParameters* p_p; // pos tag embeddings
-  Parameters* p_pbias; // parser state bias
-  Parameters* p_A; // action lstm to parser state
-  Parameters* p_B; // buffer lstm to parser state
-  Parameters* p_P; // pass lstm to parser state
-  Parameters* p_S; // stack lstm to parser state
-  Parameters* p_H; // head matrix for composition function
-  Parameters* p_D; // dependency matrix for composition function
-  Parameters* p_R; // relation matrix for composition function
-  Parameters* p_w2l; // word to LSTM input
-  Parameters* p_p2l; // POS to LSTM input
-  Parameters* p_t2l; // pretrained word embeddings to LSTM input
-  Parameters* p_ib; // LSTM input bias
-  Parameters* p_cbias; // composition function bias
-  Parameters* p_p2a;   // parser state to action
-  Parameters* p_action_start;  // action bias
-  Parameters* p_abias;  // action bias
-  Parameters* p_buffer_guard;  // end of buffer
-  Parameters* p_stack_guard;  // end of stack
-  Parameters* p_pass_guard;  // end of pass buffer
+  LookupParameter p_w; // word embeddings
+  LookupParameter p_t; // pretrained word embeddings (not updated)
+  LookupParameter p_a; // input action embeddings
+  LookupParameter p_r; // relation embeddings
+  LookupParameter p_p; // pos tag embeddings
+  Parameter p_pbias; // parser state bias
+  Parameter p_A; // action lstm to parser state
+  Parameter p_B; // buffer lstm to parser state
+  Parameter p_P; // pass lstm to parser state
+  Parameter p_S; // stack lstm to parser state
+  Parameter p_H; // head matrix for composition function
+  Parameter p_D; // dependency matrix for composition function
+  Parameter p_R; // relation matrix for composition function
+  Parameter p_w2l; // word to LSTM input
+  Parameter p_p2l; // POS to LSTM input
+  Parameter p_t2l; // pretrained word embeddings to LSTM input
+  Parameter p_ib; // LSTM input bias
+  Parameter p_cbias; // composition function bias
+  Parameter p_p2a;   // parser state to action
+  Parameter p_action_start;  // action bias
+  Parameter p_abias;  // action bias
+  Parameter p_buffer_guard;  // end of buffer
+  Parameter p_stack_guard;  // end of stack
+  Parameter p_pass_guard;  // end of pass buffer
 
   explicit LSTMParser();
   ~LSTMParser();

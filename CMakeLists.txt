@@ -8,6 +8,7 @@ enable_testing()
 
 #include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/cnn)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/dynet)
 set(WITH_EIGEN_BACKEND 1)
 
 # look for Boost
@@ -29,5 +30,6 @@ include_directories ( ${PROJECT_SOURCE_DIR}/eigen-3.2.4/)
 
 add_subdirectory(cnn/cnn)
 # add_subdirectory(cnn/examples)
+add_subdirectory(dynet/dynet)
 add_subdirectory(lstmsdparser)
 

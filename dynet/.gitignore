@@ -1,0 +1,54 @@
+# cmake stuff
+build*/
+Testing/
+dynet/Testing/
+dynet/tests.bin/
+CTestTestfile.cmake
+config.h
+Makefile
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+python/dynet.cpp
+python/dist/
+python/dyNET.egg-info/
+
+# binaries
+
+#data
+rnnlm/ptb-mikolov/
+
+# Python temporary files
+*.pyc
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+.RData
+.RHistory

@@ -8,8 +8,8 @@ using ltp::lstmsdparser::LSTMParser;
 
 cpyp::Corpus corpus;
 
-using namespace cnn::expr;
-using namespace cnn;
+using namespace dynet::expr;
+using namespace dynet;
 using namespace std;
 namespace po = boost::program_options;
 
@@ -53,7 +53,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
 }
 
 int main(int argc, char** argv) {
-  //cnn::Initialize(argc, argv);
+  //dynet::Initialize(argc, argv);
 
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];

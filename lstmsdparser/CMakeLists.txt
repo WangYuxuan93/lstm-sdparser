@@ -16,9 +16,9 @@ set_target_properties (lstm_sdparser_shared_lib    PROPERTIES
 
 # redirect output binary to tools/train
 add_executable(lstmparse main.cpp ${lstm_sdparser_SRC})
-target_link_libraries(lstmparse cnn ${Boost_LIBRARIES})
+target_link_libraries(lstmparse dynet ${Boost_LIBRARIES})
 
 add_executable(lstm_par_cmdline lstm_par_cmdline.cpp)
-target_link_libraries (lstm_par_cmdline lstm_sdparser_static_lib cnn ${Boost_LIBRARIES})
+target_link_libraries (lstm_par_cmdline lstm_sdparser_static_lib dynet ${Boost_LIBRARIES})
 
 
