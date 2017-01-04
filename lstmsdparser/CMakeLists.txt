@@ -14,7 +14,9 @@ set_target_properties (lstm_sdparser_shared_lib    PROPERTIES
     VERSION         ${lstm_sdparser_VERSION}
     OUTPUT_NAME     lstm_sdparser)
 
-# redirect output binary to tools/train
+add_executable(lstm-parse lstm-parse.cc c2.h)
+target_link_libraries(lstm-parse dynet ${Boost_LIBRARIES})
+
 add_executable(lstmparse main.cpp ${lstm_sdparser_SRC})
 target_link_libraries(lstmparse dynet ${Boost_LIBRARIES})
 

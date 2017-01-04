@@ -20,13 +20,13 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/program_options.hpp>
 
-#include "cnn/training.h"
-#include "cnn/cnn.h"
-#include "cnn/expr.h"
-#include "cnn/nodes.h"
-#include "cnn/lstm.h"
-#include "cnn/rnn.h"
-#include "c2.h"
+#include "dynet/training.h"
+#include "dynet/dynet.h"
+#include "dynet/expr.h"
+#include "dynet/nodes.h"
+#include "dynet/lstm.h"
+#include "dynet/rnn.h"
+#include "lstmsdparser/c2.h"
 
 //#include "lstm-parse.h"
 
@@ -56,8 +56,8 @@ unsigned ACTION_SIZE = 0;
 unsigned VOCAB_SIZE = 0;
 unsigned POS_SIZE = 0;
 
-using namespace cnn::expr;
-using namespace cnn;
+using namespace dynet::expr;
+using namespace dynet;
 using namespace std;
 namespace po = boost::program_options;
 
@@ -106,68 +106,72 @@ struct ParserBuilder {
   LSTMBuilder buffer_lstm;
   LSTMBuilder pass_lstm; // lstm for pass buffer
   LSTMBuilder action_lstm;
-  LookupParameters* p_w; // word embeddings
-  LookupParameters* p_t; // pretrained word embeddings (not updated)
-  LookupParameters* p_a; // input action embeddings
-  LookupParameters* p_r; // relation embeddings
-  LookupParameters* p_p; // pos tag embeddings
-  Parameters* p_pbias; // parser state bias
-  Parameters* p_A; // action lstm to parser state
-  Parameters* p_B; // buffer lstm to parser state
-  Parameters* p_P; // pass lstm to parser state
-  Parameters* p_S; // stack lstm to parser state
-  Parameters* p_H; // head matrix for composition function
-  Parameters* p_D; // dependency matrix for composition function
-  Parameters* p_R; // relation matrix for composition function
-  Parameters* p_w2l; // word to LSTM input
-  Parameters* p_p2l; // POS to LSTM input
-  Parameters* p_t2l; // pretrained word embeddings to LSTM input
-  Parameters* p_ib; // LSTM input bias
-  Parameters* p_cbias; // composition function bias
-  Parameters* p_p2a;   // parser state to action
-  Parameters* p_action_start;  // action bias
-  Parameters* p_abias;  // action bias
-  Parameters* p_buffer_guard;  // end of buffer
-  Parameters* p_stack_guard;  // end of stack
-  Parameters* p_pass_guard;  // end of pass buffer
+  LookupParameter p_w; // word embeddings
+  LookupParameter p_t; // pretrained word embeddings (not updated)
+  LookupParameter p_a; // input action embeddings
+  LookupParameter p_r; // relation embeddings
+  LookupParameter p_p; // pos tag embeddings
+  Parameter p_pbias; // parser state bias
+  Parameter p_A; // action lstm to parser state
+  Parameter p_B; // buffer lstm to parser state
+  Parameter p_P; // pass lstm to parser state
+  Parameter p_S; // stack lstm to parser state
+  Parameter p_H; // head matrix for composition function
+  Parameter p_D; // dependency matrix for composition function
+  Parameter p_R; // relation matrix for composition function
+  Parameter p_w2l; // word to LSTM input
+  Parameter p_p2l; // POS to LSTM input
+  Parameter p_t2l; // pretrained word embeddings to LSTM input
+  Parameter p_ib; // LSTM input bias
+  Parameter p_cbias; // composition function bias
+  Parameter p_p2a;   // parser state to action
+  Parameter p_action_start;  // action bias
+  Parameter p_abias;  // action bias
+  Parameter p_buffer_guard;  // end of buffer
+  Parameter p_stack_guard;  // end of stack
+  Parameter p_pass_guard;  // end of pass buffer
 
-  explicit ParserBuilder(Model* model, const unordered_map<unsigned, vector<float>>& pretrained) :
+  bool use_pretrained;
+
+  explicit ParserBuilder(Model& model, const unordered_map<unsigned, vector<float>>& pretrained) :
       stack_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       buffer_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       pass_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       action_lstm(LAYERS, ACTION_DIM, HIDDEN_DIM, model),
-      p_w(model->add_lookup_parameters(VOCAB_SIZE, {INPUT_DIM})),
-      p_a(model->add_lookup_parameters(ACTION_SIZE, {ACTION_DIM})),
-      p_r(model->add_lookup_parameters(ACTION_SIZE, {REL_DIM})),
-      p_pbias(model->add_parameters({HIDDEN_DIM})),
-      p_A(model->add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
-      p_B(model->add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
-      p_P(model->add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
-      p_S(model->add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
-      p_H(model->add_parameters({LSTM_INPUT_DIM, LSTM_INPUT_DIM})),
-      p_D(model->add_parameters({LSTM_INPUT_DIM, LSTM_INPUT_DIM})),
-      p_R(model->add_parameters({LSTM_INPUT_DIM, REL_DIM})),
-      p_w2l(model->add_parameters({LSTM_INPUT_DIM, INPUT_DIM})),
-      p_ib(model->add_parameters({LSTM_INPUT_DIM})),
-      p_cbias(model->add_parameters({LSTM_INPUT_DIM})),
-      p_p2a(model->add_parameters({ACTION_SIZE, HIDDEN_DIM})),
-      p_action_start(model->add_parameters({ACTION_DIM})),
-      p_abias(model->add_parameters({ACTION_SIZE})),
-      p_buffer_guard(model->add_parameters({LSTM_INPUT_DIM})),
-      p_stack_guard(model->add_parameters({LSTM_INPUT_DIM})),
-      p_pass_guard(model->add_parameters({LSTM_INPUT_DIM})) {
+      p_w(model.add_lookup_parameters(VOCAB_SIZE, {INPUT_DIM})),
+      p_a(model.add_lookup_parameters(ACTION_SIZE, {ACTION_DIM})),
+      p_r(model.add_lookup_parameters(ACTION_SIZE, {REL_DIM})),
+      p_pbias(model.add_parameters({HIDDEN_DIM})),
+      p_A(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
+      p_B(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
+      p_P(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
+      p_S(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
+      p_H(model.add_parameters({LSTM_INPUT_DIM, LSTM_INPUT_DIM})),
+      p_D(model.add_parameters({LSTM_INPUT_DIM, LSTM_INPUT_DIM})),
+      p_R(model.add_parameters({LSTM_INPUT_DIM, REL_DIM})),
+      p_w2l(model.add_parameters({LSTM_INPUT_DIM, INPUT_DIM})),
+      p_ib(model.add_parameters({LSTM_INPUT_DIM})),
+      p_cbias(model.add_parameters({LSTM_INPUT_DIM})),
+      p_p2a(model.add_parameters({ACTION_SIZE, HIDDEN_DIM})),
+      p_action_start(model.add_parameters({ACTION_DIM})),
+      p_abias(model.add_parameters({ACTION_SIZE})),
+      p_buffer_guard(model.add_parameters({LSTM_INPUT_DIM})),
+      p_stack_guard(model.add_parameters({LSTM_INPUT_DIM})),
+      p_pass_guard(model.add_parameters({LSTM_INPUT_DIM})) {
     if (USE_POS) {
-      p_p = model->add_lookup_parameters(POS_SIZE, {POS_DIM});
-      p_p2l = model->add_parameters({LSTM_INPUT_DIM, POS_DIM});
+      p_p = model.add_lookup_parameters(POS_SIZE, {POS_DIM});
+      p_p2l = model.add_parameters({LSTM_INPUT_DIM, POS_DIM});
     }
     if (pretrained.size() > 0) {
-      p_t = model->add_lookup_parameters(VOCAB_SIZE, {PRETRAINED_DIM});
+      use_pretrained = true;
+      p_t = model.add_lookup_parameters(VOCAB_SIZE, {PRETRAINED_DIM});
       for (auto it : pretrained)
-        p_t->Initialize(it.first, it.second);
-      p_t2l = model->add_parameters({LSTM_INPUT_DIM, PRETRAINED_DIM});
+        p_t.initialize(it.first, it.second);
+      p_t2l = model.add_parameters({LSTM_INPUT_DIM, PRETRAINED_DIM});
     } else {
-      p_t = nullptr;
-      p_t2l = nullptr;
+      use_pretrained = false;
+      //p_t = nullptr;
+      //p_t2l = nullptr;
     }
   }
 
@@ -465,7 +469,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
     if (USE_POS)
       p2l = parameter(*hg, p_p2l);
     Expression t2l;
-    if (p_t2l)
+    if (use_pretrained)
       t2l = parameter(*hg, p_t2l);
     Expression p2a = parameter(*hg, p_p2a);
     Expression abias = parameter(*hg, p_abias);
@@ -486,7 +490,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
         args.push_back(p2l);
         args.push_back(p);
       }
-      if (p_t && pretrained.count(raw_sent[i])) {  // include fixed pretrained vectors?
+      if (use_pretrained && pretrained.count(raw_sent[i])) {  // include fixed pretrained vectors?
         Expression t = const_lookup(*hg, p_t, raw_sent[i]);
         args.push_back(t2l);
         args.push_back(t);
@@ -560,7 +564,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
 
       // adist = log_softmax(r_t, current_valid_actions)
       Expression adiste = log_softmax(r_t, current_valid_actions);
-      vector<float> adist = as_vector(hg->incremental_forward());
+      vector<float> adist = as_vector(hg->incremental_forward(adiste));
       double best_score = adist[current_valid_actions[0]];
       unsigned best_a = current_valid_actions[0];
       for (unsigned i = 1; i < current_valid_actions.size(); ++i) {
@@ -875,7 +879,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
     if (USE_POS)
       p2l = parameter(*hg, p_p2l);
     Expression t2l;
-    if (p_t2l)
+    if (use_pretrained)
       t2l = parameter(*hg, p_t2l);
     Expression p2a = parameter(*hg, p_p2a);
     Expression abias = parameter(*hg, p_abias);
@@ -895,7 +899,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
         args.push_back(p2l);
         args.push_back(p);
     }
-    if (p_t && pretrained.count(sent[b0])) {  // include fixed pretrained vectors?
+    if (use_pretrained && pretrained.count(sent[b0])) {  // include fixed pretrained vectors?
         Expression t = const_lookup(*hg, p_t, sent[b0]);
         args.push_back(t2l);
         args.push_back(t);
@@ -923,7 +927,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
         args.push_back(p2l);
         args.push_back(p);
     }
-    if (p_t && pretrained.count(sent[s0])) {  // include fixed pretrained vectors?
+    if (use_pretrained && pretrained.count(sent[s0])) {  // include fixed pretrained vectors?
         Expression t = const_lookup(*hg, p_t, sent[s0]);
         args.push_back(t2l);
         args.push_back(t);
@@ -957,7 +961,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
 
     // adist = log_softmax(r_t, current_valid_actions)
     Expression adiste = log_softmax(r_t, current_valid_actions);
-    vector<float> adist = as_vector(hg->incremental_forward());
+    vector<float> adist = as_vector(hg->incremental_forward(adiste));
     double second_score = - DBL_MAX;
     string second_a = REL_NULL;
     for (unsigned i = 1; i < current_valid_actions.size(); ++i) {
@@ -975,7 +979,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
     *rel = second_a;
   }
 
-};
+}; // struct
 
 void signal_callback_handler(int /* signum */) {
   if (requested_stop) {
@@ -1216,7 +1220,17 @@ void output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
 
 
 int main(int argc, char** argv) {
-  cnn::Initialize(argc, argv);
+  //dynet::Initialize(argc, argv);
+  //allocate memory for dynet
+  char ** dy_argv = new char * [4];
+  int dy_argc = 3;
+  dy_argv[0] = "dynet";
+  dy_argv[1] = "--dynet-mem";
+  dy_argv[2] = "2000";
+  //argv[3] = nullptr;
+  //auto dyparams = dynet::extract_dynet_params(argc, argv);
+  dynet::initialize(dy_argc, dy_argv);
+  delete dy_argv;
 
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
@@ -1303,7 +1317,7 @@ int main(int argc, char** argv) {
     possible_actions[i] = i;
 
   Model model;
-  ParserBuilder parser(&model, pretrained);
+  ParserBuilder parser(model, pretrained);
   if (conf.count("model")) {
     ifstream in(conf["model"].as<string>().c_str());
     boost::archive::text_iarchive ia(in);
@@ -1315,7 +1329,7 @@ int main(int argc, char** argv) {
   //TRAINING
   if (conf.count("train")) {
     signal(SIGINT, signal_callback_handler);
-    SimpleSGDTrainer sgd(&model);
+    SimpleSGDTrainer sgd(model);
     //MomentumSGDTrainer sgd(&model);
     sgd.eta_decay = 0.08;
     //sgd.eta_decay = 0.05;
@@ -1350,7 +1364,7 @@ int main(int argc, char** argv) {
            vector<unsigned> tsentence=sentence;
            if (unk_strategy == 1) {
              for (auto& w : tsentence)
-               if (singletons.count(w) && cnn::rand01() < unk_prob) w = kUNK;
+               if (singletons.count(w) && dynet::rand01() < unk_prob) w = kUNK;
            }
 	   const vector<unsigned>& sentencePos=corpus.sentencesPos[order[si]]; 
 	   const vector<unsigned>& actions=corpus.correct_act_sent[order[si]];
@@ -1358,12 +1372,12 @@ int main(int argc, char** argv) {
            //cerr << "Start word:" << corpus.intToWords[sentence[0]]<<corpus.intToWords[sentence[1]] << endl;
            vector<vector<string>> cand;
            parser.log_prob_parser(&hg,sentence,tsentence,sentencePos,actions,corpus.actions,corpus.intToWords,&right,cand);
-           double lp = as_scalar(hg.incremental_forward());
+           double lp = as_scalar(hg.incremental_forward((VariableIndex)(hg.nodes.size() - 1)));
            if (lp < 0) {
              cerr << "Log prob < 0 on sentence " << order[si] << ": lp=" << lp << endl;
              assert(lp >= 0.0);
            }
-           hg.backward();
+           hg.backward((VariableIndex)(hg.nodes.size() - 1));
            sgd.update(1.0);
            llh += lp;
            ++si;
