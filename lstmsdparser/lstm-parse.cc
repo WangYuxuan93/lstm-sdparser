@@ -27,6 +27,7 @@
 #include "dynet/lstm.h"
 #include "dynet/rnn.h"
 #include "lstmsdparser/c2.h"
+#include "lstmsdparser/layers.h"
 
 //#include "lstm-parse.h"
 
@@ -106,6 +107,7 @@ struct ParserBuilder {
   LSTMBuilder buffer_lstm;
   LSTMBuilder pass_lstm; // lstm for pass buffer
   LSTMBuilder action_lstm;
+  BidirectionalLSTMLayer buffer_bilstm; //[bilstm] bilstm for buffer
   LookupParameter p_w; // word embeddings
   LookupParameter p_t; // pretrained word embeddings (not updated)
   LookupParameter p_a; // input action embeddings
@@ -114,6 +116,8 @@ struct ParserBuilder {
   Parameter p_pbias; // parser state bias
   Parameter p_A; // action lstm to parser state
   Parameter p_B; // buffer lstm to parser state
+  Parameter p_fwB; // [bilstm] buffer forward lstm to parser state
+  Parameter p_bwB; // [bilstm] buffer backward lstm to parser state
   Parameter p_P; // pass lstm to parser state
   Parameter p_S; // stack lstm to parser state
   Parameter p_H; // head matrix for composition function
@@ -138,12 +142,15 @@ struct ParserBuilder {
       buffer_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       pass_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       action_lstm(LAYERS, ACTION_DIM, HIDDEN_DIM, model),
+      buffer_bilstm(model, LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM),
       p_w(model.add_lookup_parameters(VOCAB_SIZE, {INPUT_DIM})),
       p_a(model.add_lookup_parameters(ACTION_SIZE, {ACTION_DIM})),
       p_r(model.add_lookup_parameters(ACTION_SIZE, {REL_DIM})),
       p_pbias(model.add_parameters({HIDDEN_DIM})),
       p_A(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_B(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
+      p_fwB(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
+      p_bwB(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_P(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_S(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_H(model.add_parameters({LSTM_INPUT_DIM, LSTM_INPUT_DIM})),
@@ -446,11 +453,12 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
         cand.push_back(cv);
 
     stack_lstm.new_graph(*hg);
-    buffer_lstm.new_graph(*hg);
+    //buffer_lstm.new_graph(*hg);
     pass_lstm.new_graph(*hg);
     action_lstm.new_graph(*hg);
+    buffer_bilstm.new_graph(hg); // [bilstm]
     stack_lstm.start_new_sequence();
-    buffer_lstm.start_new_sequence();
+    //buffer_lstm.start_new_sequence();
     pass_lstm.start_new_sequence();
     action_lstm.start_new_sequence();
     // variables in the computation graph representing the parameters
@@ -461,6 +469,8 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
     Expression cbias = parameter(*hg, p_cbias);
     Expression S = parameter(*hg, p_S);
     Expression B = parameter(*hg, p_B);
+    Expression fwB = parameter(*hg, p_fwB); // [bilstm]
+    Expression bwB = parameter(*hg, p_bwB); // [bilstm]
     Expression P = parameter(*hg, p_P);
     Expression A = parameter(*hg, p_A);
     Expression ib = parameter(*hg, p_ib);
@@ -502,8 +512,11 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
     // dummy symbol to represent the empty buffer
     buffer[0] = parameter(*hg, p_buffer_guard);
     bufferi[0] = -999;
-    for (auto& b : buffer)
-      buffer_lstm.add_input(b);
+    //for (auto& b : buffer)
+      //buffer_lstm.add_input(b);
+    buffer_bilstm.add_inputs(hg, buffer);
+    std::vector<BidirectionalLSTMLayer::Output> bilstm_outputs;
+    buffer_bilstm.get_outputs(hg, bilstm_outputs); // [bilstm] output of bilstm for buffer, first is fw, second is bw
 
     vector<Expression> pass; //variables reperesenting embedding in pass buffer
     vector<int> passi; //position of words in pass buffer
@@ -531,7 +544,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
         dir_graph[i] = v;
     }
     //remove stack.size() > 2 ||
-    while( buffer.size() > 1) {
+    while( bufferi.size() > 1) {
       // get list of possible actions for the current parser state
       vector<unsigned> current_valid_actions;
       /*if (!build_training_graph){
@@ -545,18 +558,22 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
       cerr <<"][";
       for (int i = (int)bufferi.size() - 1; i > -1 ; --i)
         cerr << corpus.intToWords[sent[bufferi[i]]]<<"-"<<bufferi[i]<<", ";
-      cerr <<"]"<<endl;
-        //}*/
+      //cerr <<"]"<<endl;
+      //}*/
       for (auto a: possible_actions) {
         //cerr << " " << setOfActions[a]<< " ";
-        if (IsActionForbidden(setOfActions[a], buffer.size(), stack.size(), sent.size() - 1, dir_graph, stacki, bufferi))
+        if (IsActionForbidden(setOfActions[a], bufferi.size(), stacki.size(), sent.size() - 1, dir_graph, stacki, bufferi))
           continue;
         //cerr << " <" << setOfActions[a] << "> ";
         current_valid_actions.push_back(a);
       }
       // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
-      Expression p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
-
+      // Expression p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
+      // [bilstm] p_t = pbias + S * slstm + P * plstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
+      Expression p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+        fwB, bilstm_outputs[sent.size() - bufferi.back()].first, bwB, bilstm_outputs[sent.size() - bufferi.back()].second,
+        A, action_lstm.back()});
+      //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
 
       Expression nlp_t = rectify(p_t);
       // r_t = abias + p2a * nlp
@@ -618,7 +635,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
 
         if (transition_system == "list"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
-                assert(buffer.size() > 1); // dummy symbol means > 1 (not >= 1)
+                assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 int pass_size = (int)pass.size();
                 for (int i = 1; i < pass_size; i++){  //do not move pass_guard
                     stack.push_back(pass.back());
@@ -631,18 +648,18 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 stack.push_back(buffer.back());
                 stack_lstm.add_input(buffer.back());
                 buffer.pop_back();
-                buffer_lstm.rewind_one_step();
+                //buffer_lstm.rewind_one_step();
                 stacki.push_back(bufferi.back());
                 bufferi.pop_back();
             } else if (ac=='N' && ac2=='R'){
-                assert(stack.size() > 1);
+                assert(stacki.size() > 1);
                 if (word_rep)
                     (*word_rep)[stacki.back()] = stack.back();
                 stack.pop_back();
                 stacki.pop_back();
                 stack_lstm.rewind_one_step();
             } else if (ac=='N' && ac2=='P'){
-                assert(stack.size() > 1);
+                assert(stacki.size() > 1);
                 pass.push_back(stack.back());
                 pass_lstm.add_input(stack.back());
                 passi.push_back(stacki.back());
@@ -650,7 +667,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 stacki.pop_back();
                 stack_lstm.rewind_one_step();
             } else if (ac=='L'){ // LEFT-REDUCE or LEFT-PASS
-                assert(stack.size() > 1 && buffer.size() > 1);
+                assert(stacki.size() > 1 && bufferi.size() > 1);
                 Expression dep, head;
                 unsigned depi, headi;
                 dep = stack.back();
@@ -666,9 +683,9 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                 Expression nlcomposed = tanh(composed);
                 stack_lstm.rewind_one_step();
-                buffer_lstm.rewind_one_step();
+                //buffer_lstm.rewind_one_step();
 
-                buffer_lstm.add_input(nlcomposed);
+                //buffer_lstm.add_input(nlcomposed);
                 buffer.push_back(nlcomposed);
                 bufferi.push_back(headi);
                 if (ac2 == 'R'){
@@ -681,7 +698,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                     passi.push_back(depi);
                 }
             } else if (ac=='R'){ // RIGHT-SHIFT or RIGHT-PASSA
-                assert(stack.size() > 1 && buffer.size() > 1);
+                assert(stacki.size() > 1 && bufferi.size() > 1);
                 Expression dep, head;
                 unsigned depi, headi;
                 dep = buffer.back();
@@ -698,7 +715,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 Expression nlcomposed = tanh(composed);
 
                 stack_lstm.rewind_one_step();
-                buffer_lstm.rewind_one_step();
+                //buffer_lstm.rewind_one_step();
                 if (ac2 == 'S'){ //RIGHT-SHIFT
                     stack_lstm.add_input(nlcomposed);
                     stack.push_back(nlcomposed);
@@ -720,7 +737,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                     pass_lstm.add_input(nlcomposed);
                     pass.push_back(nlcomposed);
                     passi.push_back(headi);
-                    buffer_lstm.add_input(dep);
+                    //buffer_lstm.add_input(dep);
                     buffer.push_back(dep);
                     bufferi.push_back(depi);
                 }
@@ -729,7 +746,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
         else if (transition_system == "spl"){
             //TODO
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
-                assert(buffer.size() > 1); // dummy symbol means > 1 (not >= 1)
+                assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 int pass_size = (int)pass.size();
                 for (int i = 1; i < pass_size; i++){  //do not move pass_guard
                     stack.push_back(pass.back());
@@ -742,11 +759,11 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 stack.push_back(buffer.back());
                 stack_lstm.add_input(buffer.back());
                 buffer.pop_back();
-                buffer_lstm.rewind_one_step();
+                //buffer_lstm.rewind_one_step();
                 stacki.push_back(bufferi.back());
                 bufferi.pop_back();
             } else if (ac=='N' && ac2=='P'){
-                assert(stack.size() > 1);
+                assert(stacki.size() > 1);
                 pass.push_back(stack.back());
                 pass_lstm.add_input(stack.back());
                 passi.push_back(stacki.back());
@@ -754,7 +771,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 stacki.pop_back();
                 stack_lstm.rewind_one_step();
             } else if (ac=='L'){ // LEFT-ARC or LEFT-POP
-                assert(stack.size() > 1 && buffer.size() > 1);
+                assert(stacki.size() > 1 && bufferi.size() > 1);
                 Expression dep, head;
                 unsigned depi, headi;
                 dep = stack.back();
@@ -770,9 +787,9 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                 Expression nlcomposed = tanh(composed);
                 stack_lstm.rewind_one_step();
-                buffer_lstm.rewind_one_step();
+                //buffer_lstm.rewind_one_step();
 
-                buffer_lstm.add_input(nlcomposed);
+                //buffer_lstm.add_input(nlcomposed);
                 buffer.push_back(nlcomposed);
                 bufferi.push_back(headi);
                 if (ac2 == 'P'){
@@ -785,7 +802,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                     passi.push_back(depi);
                 }
             } else if (ac=='R'){ // RIGHT-ARC
-                assert(stack.size() > 1 && buffer.size() > 1);
+                assert(stacki.size() > 1 && bufferi.size() > 1);
                 Expression dep, head;
                 unsigned depi, headi;
                 dep = buffer.back();
@@ -802,11 +819,11 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 Expression nlcomposed = tanh(composed);
 
                 stack_lstm.rewind_one_step();
-                buffer_lstm.rewind_one_step();
+                //buffer_lstm.rewind_one_step();
                 pass_lstm.add_input(nlcomposed);
                 pass.push_back(nlcomposed);
                 passi.push_back(headi);
-                buffer_lstm.add_input(dep);
+                //buffer_lstm.add_input(dep);
                 buffer.push_back(dep);
                 bufferi.push_back(depi);
             }

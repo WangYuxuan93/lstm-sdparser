@@ -7,8 +7,6 @@
 #include "dynet/lstm.h"
 #include "dynet/expr.h"
 
-namespace bilstm {
-
 struct BidirectionalLSTMLayer {
 	typedef std::pair<dynet::expr::Expression, dynet::expr::Expression> Output;
 	unsigned n_items;
@@ -32,4 +30,4 @@ struct BidirectionalLSTMLayer {
 	void disable_dropout();
 };
 
-}//bilstm
+#endif
