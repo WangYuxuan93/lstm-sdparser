@@ -155,7 +155,7 @@ Expression TheirTreeLSTMBuilder::add_input(int idx, vector<unsigned> children,
         if (dropout_rate) {
             in = dropout(in, dropout_rate);
         }
-
+        //cerr << "layer: " << layer << " child: " << children.size() <<  endl;
         // input
         Expression i_at;
         if (has_children) {
@@ -187,12 +187,12 @@ Expression TheirTreeLSTMBuilder::add_input(int idx, vector<unsigned> children,
         }
 
         Expression i_tct = tanh(i_act);
-        Expression i_cit = cwise_multiply(i_it, i_tct);
+        Expression i_cit = cmult(i_it, i_tct);
 
         if (has_children) {
-            Expression i_cft = cwise_multiply(i_ftk[0], i_c_k[0]);
+            Expression i_cft = cmult(i_ftk[0], i_c_k[0]);
             for (unsigned k = 1; k < children.size(); k++) {
-                i_cft = i_cft + cwise_multiply(i_ftk[k], i_c_k[k]);
+                i_cft = i_cft + cmult(i_ftk[k], i_c_k[k]);
             }
             ct[layer] = i_cft + i_cit;
         } else {
@@ -211,7 +211,7 @@ Expression TheirTreeLSTMBuilder::add_input(int idx, vector<unsigned> children,
         Expression i_ot = logistic(i_aot);
         Expression ph_t = tanh(ct[layer]);
 
-        in = ht[layer] = cwise_multiply(i_ot, ph_t);
+        in = ht[layer] = cmult(i_ot, ph_t);
         if (dropout_rate) {
             ht[layer] = dropout(ht[layer], dropout_rate); // TODO: not sure is correct
         }
@@ -230,7 +230,7 @@ void TheirTreeLSTMBuilder::copy(const RNNBuilder & rnn) {
     assert(params.size() == rnn_treelstm.params.size());
     for (size_t i = 0; i < params.size(); ++i)
         for (size_t j = 0; j < params[i].size(); ++j)
-            params[i][j]->copy(*rnn_treelstm.params[i][j]);
+            params[i][j] = rnn_treelstm.params[i][j];
 }
 
 } // namespace dynet
