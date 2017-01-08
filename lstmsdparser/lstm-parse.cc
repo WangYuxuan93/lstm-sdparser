@@ -1451,6 +1451,7 @@ int main(int argc, char** argv) {
                 << "\t[" << dev_size << " sents in " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
         if (results["LF"] > best_LF) {
           cerr << "---saving model to " << fname << "---" << endl;
+          cerr << "best LF: " << best_LF << endl;
           best_LF = results["LF"];
           ofstream out(fname);
           boost::archive::text_oarchive oa(out);
