@@ -28,7 +28,7 @@ include_directories ( ${PROJECT_SOURCE_DIR}/eigen-3.2.4/)
 
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-add_subdirectory(cnn/cnn)
+#add_subdirectory(cnn/cnn)
 # add_subdirectory(cnn/examples)
 add_subdirectory(dynet/dynet)
 add_subdirectory(lstmsdparser)
