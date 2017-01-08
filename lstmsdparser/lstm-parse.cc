@@ -1289,7 +1289,7 @@ int main(int argc, char** argv) {
      << '_' << POS_DIM
      << '_' << REL_DIM
      << "-pid" << getpid() << ".params";
-  int best_LF = 0;
+  double best_LF = 0;
   const string fname = os.str();
   cerr << "Writing parameters to file: " << fname << endl;
   bool softlinkCreated = false;
@@ -1450,7 +1450,8 @@ int main(int argc, char** argv) {
                 << " LP:" << results["LP"] << " LR:" << results["LR"] << " UP:" << results["UP"] << " UR:" <<results["UR"]
                 << "\t[" << dev_size << " sents in " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
         if (results["LF"] > best_LF) {
-          cerr << "---saving model to " << fname << "---" << endl;
+          cerr << "---previous best LF:" << best_LF 
+               <<" saving model to " << fname << "---" << endl;
           best_LF = results["LF"];
           ofstream out(fname);
           boost::archive::text_oarchive oa(out);
