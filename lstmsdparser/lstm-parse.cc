@@ -48,6 +48,7 @@ unsigned PRETRAINED_DIM = 50;
 unsigned LSTM_INPUT_DIM = 60;
 unsigned POS_DIM = 10;
 unsigned REL_DIM = 8;
+unsigned BILSTM_HIDDEN_DIM = 32; // [bilstm]
 bool use_bilstm = false; //[bilstm]
 bool use_treelstm = false; // [treelstm]
 
@@ -87,6 +88,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("action_dim", po::value<unsigned>()->default_value(16), "action embedding size")
         ("input_dim", po::value<unsigned>()->default_value(32), "input embedding size")
         ("hidden_dim", po::value<unsigned>()->default_value(64), "hidden dimension")
+        ("bilstm_hidden_dim", po::value<unsigned>()->default_value(32), "bilstm hidden dimension")
         ("pretrained_dim", po::value<unsigned>()->default_value(50), "pretrained input dimension")
         ("pos_dim", po::value<unsigned>()->default_value(12), "POS dimension")
         ("rel_dim", po::value<unsigned>()->default_value(10), "relation dimension")
@@ -161,7 +163,7 @@ struct ParserBuilder {
       buffer_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       pass_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       action_lstm(LAYERS, ACTION_DIM, HIDDEN_DIM, model),
-      buffer_bilstm(model, LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM),
+      buffer_bilstm(model, LAYERS, LSTM_INPUT_DIM, BILSTM_HIDDEN_DIM),
       tree_lstm(1, LSTM_INPUT_DIM, LSTM_INPUT_DIM, model),
       p_w(model.add_lookup_parameters(VOCAB_SIZE, {INPUT_DIM})),
       p_a(model.add_lookup_parameters(ACTION_SIZE, {ACTION_DIM})),
@@ -169,8 +171,8 @@ struct ParserBuilder {
       p_pbias(model.add_parameters({HIDDEN_DIM})),
       p_A(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_B(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
-      p_fwB(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
-      p_bwB(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
+      p_fwB(model.add_parameters({HIDDEN_DIM, BILSTM_HIDDEN_DIM})),
+      p_bwB(model.add_parameters({HIDDEN_DIM, BILSTM_HIDDEN_DIM})),
       p_P(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_S(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_H(model.add_parameters({LSTM_INPUT_DIM, LSTM_INPUT_DIM})),
@@ -1340,6 +1342,8 @@ int main(int argc, char** argv) {
   LSTM_INPUT_DIM = conf["lstm_input_dim"].as<unsigned>();
   POS_DIM = conf["pos_dim"].as<unsigned>();
   REL_DIM = conf["rel_dim"].as<unsigned>();
+
+  BILSTM_HIDDEN_DIM = conf["bilstm_hidden_dim"].as<unsigned>(); // [bilstm]
   const unsigned unk_strategy = conf["unk_strategy"].as<unsigned>();
   cerr << "Unknown word strategy: ";
   if (unk_strategy == 1) {
