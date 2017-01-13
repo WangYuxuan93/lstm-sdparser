@@ -121,6 +121,18 @@ bool has_path_to(int w1, int w2, const vector<vector<string>>& graph){
     return false;
 }
 
+bool has_path_to(int w1, int w2, const vector<vector<bool>>& graph){
+    //cerr << endl << w1 << " has path to " << w2 << endl;
+    if (graph[w1][w2])
+        return true;
+    for (int i = 0; i < (int)graph.size(); ++i){
+        if (graph[w1][i])
+            if (has_path_to(i, w2, graph))
+                return true;
+    }
+    return false;
+}
+
 struct ParserBuilder {
 
   LSTMBuilder stack_lstm; // (layers, input, hidden, trainer)
@@ -232,7 +244,7 @@ static bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, c
 }*/
 
 static bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, 
-                              const vector<vector<string>> dir_graph, const vector<int>& stacki, 
+                              const vector<vector<bool>> dir_graph, const vector<int>& stacki, 
                               const vector<int>& bufferi) {
     if (transition_system == "list"){
         //cerr << a << endl;
@@ -241,11 +253,11 @@ static bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, u
         int root_num = 0;
         int s0_head_num = 0;
         for (int i = 0; i < (int)dir_graph[root].size(); ++i)
-            if (dir_graph[root][i] != REL_NULL)
+            if (dir_graph[root][i])
                 root_num ++;
         if (s0 >= 0)
             for (int i = 0; i < (int)dir_graph[root].size(); ++i)
-                if (dir_graph[i][s0] != REL_NULL)
+                if (dir_graph[i][s0])
                     s0_head_num ++;
         if (a[0] == 'L'){
             string rel = a.substr(3, a.size() - 4);
@@ -275,11 +287,11 @@ static bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, u
         int root_num = 0;
         int s0_head_num = 0;
         for (int i = 0; i < (int)dir_graph[root].size(); ++i)
-            if (dir_graph[root][i] != REL_NULL)
+            if (dir_graph[root][i])
                 root_num ++;
         if (s0 >= 0)
             for (int i = 0; i < (int)dir_graph[root].size(); ++i)
-                if (dir_graph[i][s0] != REL_NULL)
+                if (dir_graph[i][s0])
                     s0_head_num ++;
         if (a[0] == 'L'){
             string rel = a.substr(3, a.size() - 4);
@@ -436,10 +448,10 @@ static vector<vector<string>> compute_heads(const vector<unsigned>& sent, const 
   return graph;
 }
 
-vector<unsigned> get_children(unsigned id, const vector<vector<string>> graph){
+vector<unsigned> get_children(unsigned id, const vector<vector<bool>> graph){
   vector<unsigned> children;
   for (int i = 0; i < unsigned(graph[0].size()); i++){
-    if (graph[id][i] != REL_NULL)
+    if (graph[id][i])
       children.push_back(i);
   }
   return children;
@@ -585,10 +597,10 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
 
     //init graph connecting vector
     //vector<bool> dir_graph[sent.size()]; // store the connection between words in sent
-    vector<vector<string>> dir_graph;
-    vector<string> v;
+    vector<vector<bool>> dir_graph;
+    vector<bool> v;
     for (int i = 0; i < (int)sent.size(); i++){
-        v.push_back(REL_NULL);
+        v.push_back(false);
     }
     for (int i = 0; i < (int)sent.size(); i++){
         dir_graph.push_back(v);
@@ -734,8 +746,8 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 headi = bufferi.back();
                 buffer.pop_back();
                 bufferi.pop_back();
-                //dir_graph[headi][depi] = true; // add this arc to graph
-                dir_graph[headi][depi] = REL_EXIST;
+                dir_graph[headi][depi] = true; // add this arc to graph
+                //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) rootword = intToWords.find(sent[depi])->second;
                 Expression nlcomposed;
                 if (use_treelstm){
@@ -777,8 +789,8 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 headi = stacki.back();
                 stack.pop_back();
                 stacki.pop_back();
-                //dir_graph[headi][depi] = true; // add this arc to graph
-                dir_graph[headi][depi] = REL_EXIST;
+                dir_graph[headi][depi] = true; // add this arc to graph
+                //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) rootword = intToWords.find(sent[depi])->second;
                 Expression nlcomposed;
                 if (use_treelstm){
@@ -863,8 +875,8 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 headi = bufferi.back();
                 buffer.pop_back();
                 bufferi.pop_back();
-                //dir_graph[headi][depi] = true; // add this arc to graph
-                dir_graph[headi][depi] = REL_EXIST;
+                dir_graph[headi][depi] = true; // add this arc to graph
+                //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) rootword = intToWords.find(sent[depi])->second;
                 Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                 Expression nlcomposed = tanh(composed);
@@ -897,8 +909,8 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                 headi = stacki.back();
                 stack.pop_back();
                 stacki.pop_back();
-                //dir_graph[headi][depi] = true; // add this arc to graph
-                dir_graph[headi][depi] = REL_EXIST;
+                dir_graph[headi][depi] = true; // add this arc to graph
+                //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) rootword = intToWords.find(sent[depi])->second;
                 Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                 Expression nlcomposed = tanh(composed);
@@ -955,10 +967,10 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
                                     int dir, double *score, string *rel) {
     char prefix = (dir > 0 ? 'L' : 'R');
     //init graph connecting vector
-    vector<vector<string>> dir_graph;
-    vector<string> v;
+    vector<vector<bool>> dir_graph;
+    vector<bool> v;
     for (int i = 0; i < sent_size; i++){
-        v.push_back(REL_NULL);
+        v.push_back(false);
     }
     for (int i = 0; i < sent_size; i++){
         dir_graph.push_back(v);
