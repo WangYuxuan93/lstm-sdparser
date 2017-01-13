@@ -493,8 +493,16 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
     stack_lstm.new_graph(*hg);
     pass_lstm.new_graph(*hg);
     action_lstm.new_graph(*hg);
+    stack_lstm.start_new_sequence();
+    pass_lstm.start_new_sequence();
+    action_lstm.start_new_sequence();
+
+    Expression fwB;
+    Expression bwB;
     if (use_bilstm){
       buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
+      fwB = parameter(*hg, p_fwB); // [bilstm]
+      bwB = parameter(*hg, p_bwB); // [bilstm]
     }else{
       buffer_lstm.new_graph(*hg);
       buffer_lstm.start_new_sequence();
@@ -504,9 +512,6 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
       tree_lstm.start_new_sequence(); // [treelstm]
       tree_lstm.initialize_structure(sent.size()); // [treelstm]
     }
-    stack_lstm.start_new_sequence();
-    pass_lstm.start_new_sequence();
-    action_lstm.start_new_sequence();
     // variables in the computation graph representing the parameters
     Expression pbias = parameter(*hg, p_pbias);
     Expression H = parameter(*hg, p_H);
@@ -515,8 +520,6 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
     Expression cbias = parameter(*hg, p_cbias);
     Expression S = parameter(*hg, p_S);
     Expression B = parameter(*hg, p_B);
-    Expression fwB = parameter(*hg, p_fwB); // [bilstm]
-    Expression bwB = parameter(*hg, p_bwB); // [bilstm]
     Expression P = parameter(*hg, p_P);
     Expression A = parameter(*hg, p_A);
     Expression ib = parameter(*hg, p_ib);
