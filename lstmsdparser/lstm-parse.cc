@@ -163,16 +163,12 @@ struct ParserBuilder {
       buffer_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       pass_lstm(LAYERS, LSTM_INPUT_DIM, HIDDEN_DIM, model),
       action_lstm(LAYERS, ACTION_DIM, HIDDEN_DIM, model),
-      buffer_bilstm(model, LAYERS, LSTM_INPUT_DIM, BILSTM_HIDDEN_DIM),
-      tree_lstm(1, LSTM_INPUT_DIM, LSTM_INPUT_DIM, model),
       p_w(model.add_lookup_parameters(VOCAB_SIZE, {INPUT_DIM})),
       p_a(model.add_lookup_parameters(ACTION_SIZE, {ACTION_DIM})),
       p_r(model.add_lookup_parameters(ACTION_SIZE, {REL_DIM})),
       p_pbias(model.add_parameters({HIDDEN_DIM})),
       p_A(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_B(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
-      p_fwB(model.add_parameters({HIDDEN_DIM, BILSTM_HIDDEN_DIM})),
-      p_bwB(model.add_parameters({HIDDEN_DIM, BILSTM_HIDDEN_DIM})),
       p_P(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_S(model.add_parameters({HIDDEN_DIM, HIDDEN_DIM})),
       p_H(model.add_parameters({LSTM_INPUT_DIM, LSTM_INPUT_DIM})),
@@ -187,6 +183,16 @@ struct ParserBuilder {
       p_buffer_guard(model.add_parameters({LSTM_INPUT_DIM})),
       p_stack_guard(model.add_parameters({LSTM_INPUT_DIM})),
       p_pass_guard(model.add_parameters({LSTM_INPUT_DIM})) {
+    if (use_bilstm) {
+      buffer_bilstm = BidirectionalLSTMLayer(model, LAYERS, LSTM_INPUT_DIM, BILSTM_HIDDEN_DIM);
+      p_fwB = model.add_parameters({HIDDEN_DIM, BILSTM_HIDDEN_DIM});
+      p_bwB = model.add_parameters({HIDDEN_DIM, BILSTM_HIDDEN_DIM});
+      cerr << "Created Buffer BiLSTM" << endl;
+    }
+    if (use_treelstm) {
+      tree_lstm = TheirTreeLSTMBuilder(1, LSTM_INPUT_DIM, LSTM_INPUT_DIM, model);
+      cerr << "Created TreeLSTM" << endl;
+    }
     if (USE_POS) {
       p_p = model.add_lookup_parameters(POS_SIZE, {POS_DIM});
       p_p2l = model.add_parameters({LSTM_INPUT_DIM, POS_DIM});
@@ -504,6 +510,9 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
     Expression ib = parameter(*hg, p_ib);
     Expression w2l = parameter(*hg, p_w2l);
     Expression p2l;
+
+    //cerr << "w2l: " << w2l.dim().ndims() << w2l.dim().d[0] << w2l.dim().d[1] << endl;
+
     if (USE_POS)
       p2l = parameter(*hg, p_p2l);
     Expression t2l;
@@ -1573,7 +1582,7 @@ int main(int argc, char** argv) {
       vector<vector<string>> cand;
       vector<Expression> word_rep; // word representations
       Expression act_rep; // final action representation
-      //cerr<<"compute action" << endl;
+      cerr<<"compute action" << endl;
       {
       ComputationGraph cg;
       pred = parser.log_prob_parser(&cg, sentence, tsentence, sentencePos, vector<unsigned>(),
@@ -1589,7 +1598,7 @@ int main(int argc, char** argv) {
       llh -= lp;
       trs += actions.size();
       //map<int, string> rel_ref, rel_hyp;
-      //cerr << "compute heads "<<endl;
+      cerr << "compute heads "<<endl;
       vector<vector<string>> ref = parser.compute_heads(sentence, actions, corpus.actions);
       vector<vector<string>> hyp = parser.compute_heads(sentence, pred, corpus.actions);
       refs.push_back(ref);

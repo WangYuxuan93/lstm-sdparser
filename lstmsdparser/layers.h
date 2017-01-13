@@ -15,7 +15,9 @@ struct BidirectionalLSTMLayer {
 	dynet::Parameter p_fw_guard;
 	dynet::Parameter p_bw_guard;
 
-	BidirectionalLSTMLayer(dynet::Model & model,
+	BidirectionalLSTMLayer() = default;
+
+	explicit BidirectionalLSTMLayer(dynet::Model & model,
 		unsigned n_lstm_layers,
 		unsigned dim_lstm_input,
 		unsigned dim_hidden);
