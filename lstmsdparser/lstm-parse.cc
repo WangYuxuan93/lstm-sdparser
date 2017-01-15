@@ -1597,7 +1597,6 @@ int main(int argc, char** argv) {
       vector<vector<string>> cand;
       vector<Expression> word_rep; // word representations
       Expression act_rep; // final action representation
-      cerr<<"compute action" << endl;
       {
       ComputationGraph cg;
       pred = parser.log_prob_parser(&cg, sentence, tsentence, sentencePos, vector<unsigned>(),
@@ -1613,7 +1612,6 @@ int main(int argc, char** argv) {
       llh -= lp;
       trs += actions.size();
       //map<int, string> rel_ref, rel_hyp;
-      cerr << "compute heads "<<endl;
       vector<vector<string>> ref = parser.compute_heads(sentence, actions, corpus.actions);
       vector<vector<string>> hyp = parser.compute_heads(sentence, pred, corpus.actions);
       refs.push_back(ref);
