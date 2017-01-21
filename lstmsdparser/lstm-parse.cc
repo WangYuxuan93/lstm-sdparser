@@ -634,10 +634,15 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
       }
       Expression p_t;
       if (use_bilstm){
+	Expression fwbuf,bwbuf;
+	fwbuf = bilstm_outputs[sent.size() - bufferi.back()].first - bilstm_outputs[1].first;
+	bwbuf = bilstm_outputs[1].second - bilstm_outputs[sent.size() - bufferi.back()].second; 
         // [bilstm] p_t = pbias + S * slstm + P * plstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
-        p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+        /*p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
           fwB, bilstm_outputs[sent.size() - bufferi.back()].first, bwB, bilstm_outputs[sent.size() - bufferi.back()].second,
-          A, action_lstm.back()});
+          A, action_lstm.back()});*/
+	p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+          fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
         //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
       }else{
         // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
