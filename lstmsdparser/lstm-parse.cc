@@ -1137,15 +1137,17 @@ map<string, double> evaluate(const vector<vector<vector<string>>>& refs, const v
     bool correct_labeled_flag_wo_punc = true;
     bool correct_unlabeled_flag_wo_punc = true;
 
-    //int correct_non_local_arcs = 0;
-    //int correct_non_local_heads = 0;
+    int correct_non_local_arcs = 0;
+    int correct_non_local_rels = 0;
 
-    //int sum_non_local_gold_arcs = 0;
-    //int sum_non_local_pred_arcs = 0;
+    int sum_non_local_gold_arcs = 0;
+    int sum_non_local_pred_arcs = 0;
     for (int i = 0; i < (int)refs.size(); ++i){
         vector<unsigned> sentPos = sentencesPos[i];
         unsigned sent_len = refs[i].size();
         assert(sentPos.size() == sent_len);
+        vector<int> gold_head(sent_len, 0);
+        vector<int> pred_head(sent_len, 0);
         correct_labeled_flag_wo_punc = true;
         correct_unlabeled_flag_wo_punc = true;
         for (unsigned j = 0; j < sent_len; ++j){
@@ -1153,8 +1155,10 @@ map<string, double> evaluate(const vector<vector<vector<string>>>& refs, const v
                 if (refs[i][j][k] != REL_NULL){
                     sum_gold_arcs ++;
                     //cerr << " id : " << k + 1 << " POS: " << sentPos[k] << endl;
-                    if (sentPos[k] != punc)
+                    if (sentPos[k] != punc){
                         sum_gold_arcs_wo_punc ++;
+                        gold_head[k]++;
+                    }
                     if (hyps[i][j][k] != REL_NULL){
                         correct_arcs ++;
                         if (sentPos[k] != punc)
@@ -1175,8 +1179,10 @@ map<string, double> evaluate(const vector<vector<vector<string>>>& refs, const v
                 }
                 if (hyps[i][j][k] != REL_NULL){
                     sum_pred_arcs ++;
-                    if (sentPos[k] != punc)
+                    if (sentPos[k] != punc){
                         sum_pred_arcs_wo_punc ++;
+                        pred_head[k] ++;
+                    }
                 }
             }//k
         }//j
@@ -1185,6 +1191,21 @@ map<string, double> evaluate(const vector<vector<vector<string>>>& refs, const v
             if (correct_labeled_flag_wo_punc)
                 correct_labeled_graphs_wo_punc ++;
         }
+        for (unsigned c = 0; c < sent_len; ++c){
+            if (gold_head[c] == 1 && pred_head[c] == 1)
+                continue;
+            sum_non_local_gold_arcs += gold_head[c];
+            sum_non_local_pred_arcs += pred_head[c];
+            for (unsigned h = 0; h < sent_len; ++h){
+                if (refs[i][h][c] != REL_NULL && sentPos[c] != punc 
+                    && hyps[i][h][c] != REL_NULL){
+                    correct_non_local_arcs ++;
+                    if (refs[i][h][c] == hyps[i][h][c]){
+                        correct_non_local_rels ++;
+                    }
+                }          
+            }//h
+        }//c
     }//i
     //int sum_graphs = (int)refs.size();
     //cerr << "cor: arcs: " << correct_arcs_wo_punc << " rels: " << correct_rels_wo_punc 
@@ -1195,6 +1216,11 @@ map<string, double> evaluate(const vector<vector<vector<string>>>& refs, const v
     result["LR"] = correct_rels_wo_punc * 100.0 / sum_gold_arcs_wo_punc;
     result["LP"] = correct_rels_wo_punc * 100.0 / sum_pred_arcs_wo_punc;
 
+    result["NUR"] = correct_non_local_arcs * 100.0 / sum_non_local_gold_arcs;
+    result["NUP"] = correct_non_local_arcs * 100.0 / sum_non_local_pred_arcs;
+    result["NLR"] = correct_non_local_rels * 100.0 / sum_non_local_gold_arcs;
+    result["NLP"] = correct_non_local_rels * 100.0 / sum_non_local_pred_arcs;
+
     if (sum_pred_arcs_wo_punc == 0){
         result["LP"] = 0;
         result["UP"] = 0;
@@ -1202,10 +1228,18 @@ map<string, double> evaluate(const vector<vector<vector<string>>>& refs, const v
 
     result["UF"] = 2 * result["UR"] * result["UP"] / (result["UR"] + result["UP"]);   
     result["LF"] = 2 * result["LR"] * result["LP"] / (result["LR"] + result["LP"]);
+
+    result["NUF"] = 2 * result["NUR"] * result["NUP"] / (result["NUR"] + result["NUP"]);   
+    result["NLF"] = 2 * result["NLR"] * result["NLP"] / (result["NLR"] + result["NLP"]);
+
     if (result["LR"] == 0 && result["LP"] == 0)
         result["LF"] = 0;
     if (result["UR"] == 0 && result["UP"] == 0)
         result["UF"] = 0;
+    if (result["NLR"] == 0 && result["NLP"] == 0)
+        result["NLF"] = 0;
+    if (result["NUR"] == 0 && result["NUP"] == 0)
+        result["NUF"] = 0;
     return result;
 }
 
@@ -1402,6 +1436,7 @@ int main(int argc, char** argv) {
      << '_' << REL_DIM
      << "-pid" << getpid() << ".params";
   double best_LF = 0;
+  double best_NLF = 0;
   const string fname = os.str();
   cerr << "Writing parameters to file: " << fname << endl;
   bool softlinkCreated = false;
@@ -1559,12 +1594,14 @@ int main(int argc, char** argv) {
         auto t_end = std::chrono::high_resolution_clock::now();
         cerr << "  **dev (iter=" << iter << " epoch=" << (tot_seen / corpus.nsentences) << ")\tllh=" << llh 
                 << " ppl: " << exp(llh / trs) << " err: " << (trs - right) / trs << " LF: " << results["LF"] << " UF:" << results["UF"] 
+                << " NLF: " << results["NLF"] << " NUF:" << results["NUF"]
                 << " LP:" << results["LP"] << " LR:" << results["LR"] << " UP:" << results["UP"] << " UR:" <<results["UR"]
                 << "\t[" << dev_size << " sents in " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
-        if (results["LF"] > best_LF) {
-          cerr << "---previous best LF:" << best_LF 
+        if (results["LF"] > best_LF && results["NLF"] > best_NLF) {
+          cerr << "---previous best LF: " << best_LF << " best NLF: " << best_NLF 
                <<" saving model to " << fname << "---" << endl;
           best_LF = results["LF"];
+          best_NLF = results["NLF"];
           ofstream out(fname);
           boost::archive::text_oarchive oa(out);
           oa << model;
@@ -1625,12 +1662,12 @@ int main(int argc, char** argv) {
       //map<int, string> rel_ref, rel_hyp;
       vector<vector<string>> ref = parser.compute_heads(sentence, actions, corpus.actions);
       vector<vector<string>> hyp = parser.compute_heads(sentence, pred, corpus.actions);
-      refs.push_back(ref);
-      hyps.push_back(hyp);
       if (process_headless(hyp, cand, word_rep, act_rep, parser, corpus.actions, sentence, sentencePos) > 0) {
             miss_head++;
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
-        }
+      }
+      refs.push_back(ref);
+      hyps.push_back(hyp);
         //cerr<<"write to file" <<endl;
       output_conll(sentence, sentencePos, sentenceUnkStr, corpus.intToWords, corpus.intToPos, hyp);
       //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
@@ -1640,7 +1677,8 @@ int main(int argc, char** argv) {
     map<string, double> results = evaluate(refs, hyps, corpus.sentencesPosDev, corpus.posToInt["PU"]);
     auto t_end = std::chrono::high_resolution_clock::now();
     cerr << "TEST llh=" << llh << " ppl: " << exp(llh / trs) << " err: " << (trs - right) / trs 
-    << " LF: " << results["LF"] << " UF:" << results["UF"]  << " LP:" << results["LP"] << " LR:" << results["LR"] 
+    << " LF: " << results["LF"] << " UF:" << results["UF"] << " NLF: " << results["NLF"] << " NUF:" << results["NUF"]
+    << " LP:" << results["LP"] << " LR:" << results["LR"]     
     << " UP:" << results["UP"] << " UR:" <<results["UR"]  << "\t[" << corpus_size << " sents in " 
         << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
   }
