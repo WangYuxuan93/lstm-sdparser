@@ -1211,6 +1211,10 @@ map<string, double> evaluate(const vector<vector<vector<string>>>& refs, const v
     //cerr << "cor: arcs: " << correct_arcs_wo_punc << " rels: " << correct_rels_wo_punc 
             //<< "\nsum: gold arcs: " << sum_gold_arcs_wo_punc << " pred arcs: " << sum_pred_arcs_wo_punc << endl;
     map<string, double> result;
+    if (sum_non_local_gold_arcs == 0)
+      sum_non_local_gold_arcs = 1;
+    if (sum_non_local_pred_arcs == 0)
+      sum_non_local_pred_arcs = 1;
     result["UR"] = correct_arcs_wo_punc * 100.0 / sum_gold_arcs_wo_punc;
     result["UP"] = correct_arcs_wo_punc * 100.0 / sum_pred_arcs_wo_punc;
     result["LR"] = correct_rels_wo_punc * 100.0 / sum_gold_arcs_wo_punc;
