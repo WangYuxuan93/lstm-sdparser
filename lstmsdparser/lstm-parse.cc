@@ -78,7 +78,8 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("test_data,p", po::value<string>(), "Test corpus")
         ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(list - listbased, spl - simplified)")
         ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
-        ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
+        ("dynet_seed,y", po::value<string>()->default_value("1234"), "Dynet seed for initialization")
+	("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
         ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
         ("model,m", po::value<string>(), "Load saved model from this file")
         ("use_pos_tags,P", "make POS tags visible to parser")
@@ -1334,17 +1335,7 @@ void output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
 
 int main(int argc, char** argv) {
   //dynet::Initialize(argc, argv);
-  //allocate memory for dynet
-  char ** dy_argv = new char * [4];
-  int dy_argc = 3;
-  dy_argv[0] = "dynet";
-  dy_argv[1] = "--dynet-mem";
-  dy_argv[2] = "2000";
-  //argv[3] = nullptr;
-  //auto dyparams = dynet::extract_dynet_params(argc, argv);
-  dynet::initialize(dy_argc, dy_argv);
-  delete dy_argv;
-
+  
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
   cerr << endl;
@@ -1352,6 +1343,21 @@ int main(int argc, char** argv) {
 
   po::variables_map conf;
   InitCommandLine(argc, argv, &conf);
+  
+  std::string dynet_seed = conf["dynet_seed"].as<string>();
+  //allocate memory for dynet
+  char ** dy_argv = new char * [6];
+  int dy_argc = 5;
+  dy_argv[0] = "dynet";
+  dy_argv[1] = "--dynet-mem";
+  dy_argv[2] = "2000";
+  dy_argv[3] = "--dynet-seed";
+  dy_argv[4] = (char*)dynet_seed.c_str();
+  //argv[3] = nullptr;
+  //auto dyparams = dynet::extract_dynet_params(argc, argv);
+  dynet::initialize(dy_argc, dy_argv);
+  delete dy_argv;
+ 
   USE_POS = conf.count("use_pos_tags");
   use_bilstm = conf.count("use_bilstm");
   use_treelstm = conf.count("use_treelstm");
