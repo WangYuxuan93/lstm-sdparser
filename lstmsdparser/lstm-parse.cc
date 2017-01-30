@@ -282,11 +282,13 @@ static bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, u
         }
         return false;
   }
-    else if (transition_system == "spl"){
+    else if (transition_system == "tree"){
+        //cerr << a << endl;
         int s0 = stacki.back();
         int b0 = bufferi.back();
         int root_num = 0;
         int s0_head_num = 0;
+        int b0_head_num = 0;
         for (int i = 0; i < (int)dir_graph[root].size(); ++i)
             if (dir_graph[root][i])
                 root_num ++;
@@ -294,6 +296,10 @@ static bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, u
             for (int i = 0; i < (int)dir_graph[root].size(); ++i)
                 if (dir_graph[i][s0])
                     s0_head_num ++;
+        if (b0 >= 0)
+            for (int i = 0; i < (int)dir_graph[root].size(); ++i)
+                if (dir_graph[i][b0])
+                    b0_head_num ++;
         if (a[0] == 'L'){
             string rel = a.substr(3, a.size() - 4);
             if (bsize < 2 || ssize < 2) return true;
@@ -302,15 +308,18 @@ static bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, u
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
             if (b0 == (int)root && !(rel == "Root" && root_num == 0 && s0_head_num == 0)) return true;
             if (b0 != (int)root && rel == "Root") return true;
+            if (s0_head_num >= 1) return true; // add for original list-based
         }
         if (a[0] == 'R'){
             if (bsize < 2 || ssize < 2) return true;
             if (has_path_to(b0, s0, dir_graph)) return true;
             if (b0 == (int)root) return true;
+            if (b0_head_num >= 1) return true; // add for original list-based
         }
         if (a[0] == 'N'){
             if (a[1] == 'S' && bsize < 2) return true;
             //if (a[1] == 'S' && bsize == 2 && ssize > 2) return true;
+            if (a[1] == 'R' && !(ssize > 1 && s0_head_num > 0)) return true;
             if (a[1] == 'P' && !(ssize > 1 && bsize > 1))  return true;
         }
         return false;
@@ -353,7 +362,7 @@ static vector<vector<string>> compute_heads(const vector<unsigned>& sent, const 
 
       cerr << "action:" << actionString << endl;*/
 
-        if (transition_system == "list"){
+        if (transition_system == "list" || transition_system == "tree"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
                 assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 int passi_size = (int)passi.size();
@@ -709,7 +718,7 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
       const char ac2 = actionString[1];
       //cerr << ac << ac2 << endl;
 
-        if (transition_system == "list"){
+        if (transition_system == "list" || transition_system == "tree"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
                 assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 int pass_size = (int)pass.size();
@@ -1255,12 +1264,22 @@ int process_headless(vector<vector<string>>& hyp, vector<vector<string>>& cand, 
     int root = hyp.size() - 1;
     int miss_head_num = 0;
     bool has_head_flag = false;
+    int head; // for tree
+
     for (unsigned i = 0; i < (hyp.size() - 1); ++i){
         has_head_flag = false;
+        head = 0; // for tree
         for (unsigned j = 0; j < hyp.size(); ++j){
-            if (hyp[j][i] != REL_NULL)
+            if (hyp[j][i] != REL_NULL){
                 has_head_flag = true;
+                head ++;
+                //break;
+            }
         }
+        if (transition_system == "tree" && head > 1){
+            cerr << "multi head!" << endl;
+        }
+
         if (!has_head_flag){
             miss_head_num ++;
             // use candidate relations
