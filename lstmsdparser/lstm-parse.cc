@@ -78,7 +78,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("test_data,p", po::value<string>(), "Test corpus")
         ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(list - listbased, spl - simplified)")
         ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
-        ("dynet_seed,y", po::value<string>()->default_value("1234"), "Dynet seed for initialization")
+        ("dynet_seed,y", po::value<string>(), "Dynet seed for initialization")
 	("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
         ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
         ("model,m", po::value<string>(), "Load saved model from this file")
@@ -1381,16 +1381,20 @@ int main(int argc, char** argv) {
 
   po::variables_map conf;
   InitCommandLine(argc, argv, &conf);
-  
-  std::string dynet_seed = conf["dynet_seed"].as<string>();
+  std::string dynet_seed;
+  if (conf.count("dynet_seed")) 
+    dynet_seed = conf["dynet_seed"].as<string>();
   //allocate memory for dynet
   char ** dy_argv = new char * [6];
-  int dy_argc = 5;
+  int dy_argc = 3;
   dy_argv[0] = "dynet";
   dy_argv[1] = "--dynet-mem";
   dy_argv[2] = "2000";
-  dy_argv[3] = "--dynet-seed";
-  dy_argv[4] = (char*)dynet_seed.c_str();
+  if (conf.count("dynet_seed")){
+    dy_argc = 5;
+    dy_argv[3] = "--dynet-seed";
+    dy_argv[4] = (char*)dynet_seed.c_str();
+  }
   //argv[3] = nullptr;
   //auto dyparams = dynet::extract_dynet_params(argc, argv);
   dynet::initialize(dy_argc, dy_argv);
@@ -1601,8 +1605,8 @@ int main(int argc, char** argv) {
                 << " NLF: " << results["NLF"] << " NUF:" << results["NUF"]
                 << " LP:" << results["LP"] << " LR:" << results["LR"] << " UP:" << results["UP"] << " UR:" <<results["UR"]
                 << "\t[" << dev_size << " sents in " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
-        if (results["LF"] > best_LF && results["NLF"] > best_NLF) {
-          cerr << "---previous best LF: " << best_LF << " best NLF: " << best_NLF 
+        if (results["LF"] > best_LF) {
+          cerr << "---previous best LF: " << best_LF << " NLF: " << best_NLF 
                <<" saving model to " << fname << "---" << endl;
           best_LF = results["LF"];
           best_NLF = results["NLF"];
