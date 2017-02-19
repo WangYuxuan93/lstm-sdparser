@@ -3,6 +3,8 @@ include_directories (${PROJECT_SOURCE_DIR}/)
 set (lstm_sdparser_VERSION "0.0.1")
 set (lstm_sdparser_SRC
     lstm_sdparser.cpp
+    layers.cc
+    theirtreelstm.cc
     )
 
 add_library(lstm_sdparser_static_lib STATIC lstm_sdparser_dll.cpp ${lstm_sdparser_SRC})

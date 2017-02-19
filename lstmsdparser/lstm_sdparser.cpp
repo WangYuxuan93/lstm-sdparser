@@ -10,7 +10,8 @@ namespace po = boost::program_options;
 
 //struct LSTMParser {
 
-LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, "list", true}) {}
+LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100,
+                               "list", "", true, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -29,7 +30,7 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
 
   pretrained[kUNK] = std::vector<float>(Opt.PRETRAINED_DIM, 0);
   if (DEBUG)
-    cerr << "Loading word embeddings from " << word_embedding_file << " with" << Opt.PRETRAINED_DIM << " dimensions\n";
+    cerr << "Loading word embeddings from " << word_embedding_file << " with " << Opt.PRETRAINED_DIM << " dimensions\n";
   ifstream in(word_embedding_file.c_str());
   string line;
   getline(in, line);
@@ -47,15 +48,20 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   if (DEBUG)
     cerr << "Setup model in dynet" << endl;
   //allocate memory for dynet
-  char ** argv = new char * [4];
-  int argc = 3;
-  argv[0] = "dynet";
-  argv[1] = "--dynet-mem";
-  argv[2] = "2000";
+  char ** dy_argv = new char * [6];
+  int dy_argc = 3;
+  dy_argv[0] = "dynet";
+  dy_argv[1] = "--dynet-mem";
+  dy_argv[2] = "2000";
+  if (Opt.dynet_seed.length() > 0){
+    dy_argc = 5;
+    dy_argv[3] = "--dynet-seed";
+    dy_argv[4] = (char*)Opt.dynet_seed.c_str();
+  }
   //argv[3] = nullptr;
   //auto dyparams = dynet::extract_dynet_params(argc, argv);
-  dynet::initialize(argc, argv);
-  delete argv;
+  dynet::initialize(dy_argc, dy_argv);
+  delete dy_argv;
   //dynet::initialize(dyparams);
 
   stack_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
@@ -82,6 +88,16 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   p_buffer_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
   p_stack_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
   p_pass_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
+  if (Opt.USE_BILSTM) {
+    buffer_bilstm = BidirectionalLSTMLayer(model, Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.BILSTM_HIDDEN_DIM);
+    p_fwB = model.add_parameters({Opt.HIDDEN_DIM, Opt.BILSTM_HIDDEN_DIM});
+    p_bwB = model.add_parameters({Opt.HIDDEN_DIM, Opt.BILSTM_HIDDEN_DIM});
+    cerr << "Created Buffer BiLSTM" << endl;
+  }
+  if (Opt.USE_TREELSTM) {
+    tree_lstm = TheirTreeLSTMBuilder(1, Opt.LSTM_INPUT_DIM, Opt.LSTM_INPUT_DIM, model);
+    cerr << "Created TreeLSTM" << endl;
+  }
   if (Opt.USE_POS) {
     p_p = model.add_lookup_parameters(System_size.POS_SIZE, {Opt.POS_DIM});
     p_p2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.POS_DIM});
@@ -139,7 +155,7 @@ void LSTMParser::get_dynamic_infos(){
   for (unsigned i = 0; i < corpus.nactions; ++i)
     possible_actions[i] = i;
 }
-
+/*
 bool LSTMParser::has_path_to(int w1, int w2, const vector<bool>  dir_graph []){
     //cerr << endl << w1 << " has path to " << w2 << endl;
     if (dir_graph[w1][w2])
@@ -150,7 +166,7 @@ bool LSTMParser::has_path_to(int w1, int w2, const vector<bool>  dir_graph []){
                 return true;
     }
     return false;
-}
+}*/
 
 bool LSTMParser::has_path_to(int w1, int w2, const vector<vector<string>>& graph){
     //cerr << endl << w1 << " has path to " << w2 << endl;
@@ -164,8 +180,29 @@ bool LSTMParser::has_path_to(int w1, int w2, const vector<vector<string>>& graph
     return false;
 }
 
- bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, 
-                                      unsigned root, const vector<vector<string>> dir_graph, //const vector<bool>  dir_graph [], 
+bool LSTMParser::has_path_to(int w1, int w2, const vector<vector<bool>>& graph){
+    //cerr << endl << w1 << " has path to " << w2 << endl;
+    if (graph[w1][w2])
+        return true;
+    for (int i = 0; i < (int)graph.size(); ++i){
+        if (graph[w1][i])
+            if (has_path_to(i, w2, graph))
+                return true;
+    }
+    return false;
+}
+
+vector<unsigned> LSTMParser::get_children(unsigned id, const vector<vector<bool>> graph){
+  vector<unsigned> children;
+  for (int i = 0; i < unsigned(graph[0].size()); i++){
+    if (graph[id][i])
+      children.push_back(i);
+  }
+  return children;
+}
+
+bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, 
+                                      unsigned root, const vector<vector<bool>> dir_graph, //const vector<bool>  dir_graph [], 
                                       const vector<int>& stacki, const vector<int>& bufferi) {
     if (transition_system == "list"){
         //cerr << a << endl;
@@ -174,11 +211,11 @@ bool LSTMParser::has_path_to(int w1, int w2, const vector<vector<string>>& graph
         int root_num = 0;
         int s0_head_num = 0;
         for (int i = 0; i < (int)dir_graph[root].size(); ++i)
-            if (dir_graph[root][i] != REL_NULL)
+            if (dir_graph[root][i])
                 root_num ++;
         if (s0 >= 0)
             for (int i = 0; i < (int)dir_graph[root].size(); ++i)
-                if (dir_graph[i][s0] != REL_NULL)
+                if (dir_graph[i][s0])
                     s0_head_num ++;
         if (a[0] == 'L'){
             string rel = a.substr(3, a.size() - 4);
@@ -208,11 +245,11 @@ bool LSTMParser::has_path_to(int w1, int w2, const vector<vector<string>>& graph
         int root_num = 0;
         int s0_head_num = 0;
         for (int i = 0; i < (int)dir_graph[root].size(); ++i)
-            if (dir_graph[root][i] != REL_NULL)
+            if (dir_graph[root][i])
                 root_num ++;
         if (s0 >= 0)
             for (int i = 0; i < (int)dir_graph[root].size(); ++i)
-                if (dir_graph[i][s0] != REL_NULL)
+                if (dir_graph[i][s0])
                     s0_head_num ++;
         if (a[0] == 'L'){
             string rel = a.substr(3, a.size() - 4);
@@ -407,13 +444,28 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         cand.push_back(cv);
 
     stack_lstm.new_graph(*hg);
-    buffer_lstm.new_graph(*hg);
     pass_lstm.new_graph(*hg);
     action_lstm.new_graph(*hg);
     stack_lstm.start_new_sequence();
-    buffer_lstm.start_new_sequence();
     pass_lstm.start_new_sequence();
     action_lstm.start_new_sequence();
+
+    Expression fwB;
+    Expression bwB;
+    if (Opt.USE_BILSTM){
+      buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
+      fwB = parameter(*hg, p_fwB); // [bilstm]
+      bwB = parameter(*hg, p_bwB); // [bilstm]
+    }else{
+      buffer_lstm.new_graph(*hg);
+      buffer_lstm.start_new_sequence();
+    }
+    if (Opt.USE_TREELSTM){
+      tree_lstm.new_graph(*hg); // [treelstm]
+      tree_lstm.start_new_sequence(); // [treelstm]
+      tree_lstm.initialize_structure(sent.size()); // [treelstm]
+    }
+
     // variables in the computation graph representing the parameters
     Expression pbias = parameter(*hg, p_pbias);
     Expression H = parameter(*hg, p_H);
@@ -440,6 +492,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     vector<Expression> buffer(sent.size() + 1);  // variables representing word embeddings (possibly including POS info)
     vector<int> bufferi(sent.size() + 1);  // position of the words in the sentence
     // precompute buffer representation from left to right
+    vector<Expression> word_emb(sent.size()); // [treelstm] store original word representation emb[i] for sent[i]
 
     for (unsigned i = 0; i < sent.size(); ++i) {
       assert(sent[i] < System_size.VOCAB_SIZE);
@@ -459,12 +512,27 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       //buffer[] = ib + w2l * w + p2l * p + t2l * t
       buffer[sent.size() - i] = rectify(affine_transform(args));
       bufferi[sent.size() - i] = i;
+      if (Opt.USE_TREELSTM){
+        word_emb[i] = buffer[sent.size() - i];
+      }
     }
+    if (Opt.USE_TREELSTM){
+      vector<unsigned> h;
+      for (int i = 0; i < sent.size(); i++)
+        tree_lstm.add_input(i, h, word_emb[i]);
+    }
+
     // dummy symbol to represent the empty buffer
     buffer[0] = parameter(*hg, p_buffer_guard);
     bufferi[0] = -999;
-    for (auto& b : buffer)
-      buffer_lstm.add_input(b);
+    std::vector<BidirectionalLSTMLayer::Output> bilstm_outputs;
+    if (Opt.USE_BILSTM){
+      buffer_bilstm.add_inputs(hg, buffer); 
+      buffer_bilstm.get_outputs(hg, bilstm_outputs); // [bilstm] output of bilstm for buffer, first is fw, second is bw
+    }else{
+      for (auto& b : buffer)
+        buffer_lstm.add_input(b);
+    }
 
     vector<Expression> pass; //variables reperesenting embedding in pass buffer
     vector<int> passi; //position of words in pass buffer
@@ -484,10 +552,10 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
     //init graph connecting vector
     //vector<bool> dir_graph[sent.size()]; // store the connection between words in sent
-    vector<vector<string>> dir_graph;
-    vector<string> v;
+    vector<vector<bool>> dir_graph;
+    vector<bool> v;
     for (int i = 0; i < (int)sent.size(); i++){
-        v.push_back(REL_NULL);
+        v.push_back(false);
     }
     for (int i = 0; i < (int)sent.size(); i++){
         dir_graph.push_back(v);
@@ -516,9 +584,22 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         //cerr << " <" << setOfActions[a] << "> ";
         current_valid_actions.push_back(a);
       }
-      // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
-      Expression p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
-
+      Expression p_t;
+      if (Opt.USE_BILSTM){
+        Expression fwbuf,bwbuf;
+        fwbuf = bilstm_outputs[sent.size() - bufferi.back()].first - bilstm_outputs[1].first;
+        bwbuf = bilstm_outputs[1].second - bilstm_outputs[sent.size() - bufferi.back()].second; 
+        // [bilstm] p_t = pbias + S * slstm + P * plstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
+        /*p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+          fwB, bilstm_outputs[sent.size() - bufferi.back()].first, bwB, bilstm_outputs[sent.size() - bufferi.back()].second,
+          A, action_lstm.back()});*/
+        p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+                                fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
+        //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
+      }else{
+        // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
+        p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
+      }
 
       Expression nlp_t = rectify(p_t);
       // r_t = abias + p2a * nlp
@@ -577,6 +658,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       const string& actionString=setOfActions[action];
       const char ac = actionString[0];
       const char ac2 = actionString[1];
+      //cerr << ac << ac2 << endl;
 
         if (transition_system == "list"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
@@ -593,7 +675,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 stack.push_back(buffer.back());
                 stack_lstm.add_input(buffer.back());
                 buffer.pop_back();
-                buffer_lstm.rewind_one_step();
+                if (!Opt.USE_BILSTM)
+                  buffer_lstm.rewind_one_step();
                 stacki.push_back(bufferi.back());
                 bufferi.pop_back();
             } else if (ac=='N' && ac2=='R'){
@@ -623,15 +706,26 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 headi = bufferi.back();
                 buffer.pop_back();
                 bufferi.pop_back();
-                //dir_graph[headi][depi] = true; // add this arc to graph
-                dir_graph[headi][depi] = REL_EXIST;
+                dir_graph[headi][depi] = true; // add this arc to graph
+                //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) rootword = intToWords.find(sent[depi])->second;
-                Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
-                Expression nlcomposed = tanh(composed);
+                Expression nlcomposed;
+                if (Opt.USE_TREELSTM){
+                  vector<unsigned> c = get_children(headi, dir_graph);
+                  /*cerr << "children: ";
+                  for(int i = 0; i < c.size(); i++)
+                    cerr << c[i] << " ";
+                  cerr << endl;*/
+                  nlcomposed = tree_lstm.add_input(headi, get_children(headi, dir_graph), word_emb[headi]);
+                } else{
+                  Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
+                  nlcomposed = tanh(composed);
+                }
                 stack_lstm.rewind_one_step();
-                buffer_lstm.rewind_one_step();
-
-                buffer_lstm.add_input(nlcomposed);
+                if (!Opt.USE_BILSTM){
+                  buffer_lstm.rewind_one_step();
+                  buffer_lstm.add_input(nlcomposed);
+                }
                 buffer.push_back(nlcomposed);
                 bufferi.push_back(headi);
                 if (ac2 == 'R'){
@@ -655,14 +749,24 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 headi = stacki.back();
                 stack.pop_back();
                 stacki.pop_back();
-                //dir_graph[headi][depi] = true; // add this arc to graph
-                dir_graph[headi][depi] = REL_EXIST;
+                dir_graph[headi][depi] = true; // add this arc to graph
+                //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) rootword = intToWords.find(sent[depi])->second;
-                Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
-                Expression nlcomposed = tanh(composed);
-
+                Expression nlcomposed;
+                if (Opt.USE_TREELSTM){
+                  vector<unsigned> c = get_children(headi, dir_graph);
+                  /*cerr << "children: ";
+                  for(int i = 0; i < c.size(); i++)
+                    cerr << c[i] << " ";
+                  cerr << endl;*/
+                  nlcomposed = tree_lstm.add_input(headi, get_children(headi, dir_graph),word_emb[headi]);
+                } else{
+                  Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
+                  nlcomposed = tanh(composed);
+                }
                 stack_lstm.rewind_one_step();
-                buffer_lstm.rewind_one_step();
+                if (!Opt.USE_BILSTM)
+                    buffer_lstm.rewind_one_step();
                 if (ac2 == 'S'){ //RIGHT-SHIFT
                     stack_lstm.add_input(nlcomposed);
                     stack.push_back(nlcomposed);
@@ -684,7 +788,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                     pass_lstm.add_input(nlcomposed);
                     pass.push_back(nlcomposed);
                     passi.push_back(headi);
-                    buffer_lstm.add_input(dep);
+                    if (!Opt.USE_BILSTM)
+                      buffer_lstm.add_input(dep);
                     buffer.push_back(dep);
                     bufferi.push_back(depi);
                 }
@@ -729,8 +834,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 headi = bufferi.back();
                 buffer.pop_back();
                 bufferi.pop_back();
-                //dir_graph[headi][depi] = true; // add this arc to graph
-                dir_graph[headi][depi] = REL_EXIST;
+                dir_graph[headi][depi] = true; // add this arc to graph
+                //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) rootword = intToWords.find(sent[depi])->second;
                 Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                 Expression nlcomposed = tanh(composed);
@@ -761,8 +866,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 headi = stacki.back();
                 stack.pop_back();
                 stacki.pop_back();
-                //dir_graph[headi][depi] = true; // add this arc to graph
-                dir_graph[headi][depi] = REL_EXIST;
+                dir_graph[headi][depi] = true; // add this arc to graph
+                //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) rootword = intToWords.find(sent[depi])->second;
                 Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                 Expression nlcomposed = tanh(composed);
@@ -818,12 +923,12 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     char prefix = (dir > 0 ? 'L' : 'R');
     //init graph connecting vector
     //vector<bool> dir_graph[sent_size]; // store the connection between words in sent
-    vector<vector<string>> dir_graph;
+    vector<vector<bool>> dir_graph;
     //vector<bool> v;
-    vector<string> v;
+    vector<bool> v;
     for (int i = 0; i < sent_size; i++){
         //v.push_back(false);
-        v.push_back(REL_NULL);
+        v.push_back(false);
     }
     for (int i = 0; i < sent_size; i++){
         dir_graph.push_back(v);
@@ -1038,7 +1143,7 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
     requested_stop = false;
     signal(SIGINT, signal_callback_handler);
     unsigned status_every_i_iterations = 100;
-    int best_LF = 0;
+    double best_LF = 0;
     bool softlinkCreated = false;
     SimpleSGDTrainer sgd(model);
     sgd.eta_decay = 0.08;
@@ -1075,8 +1180,8 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
              for (auto& w : tsentence)
                if (singletons.count(w) && dynet::rand01() < unk_prob) w = kUNK;
            }
-     const std::vector<unsigned>& sentencePos=corpus.sentencesPos[order[si]]; 
-     const std::vector<unsigned>& actions=corpus.correct_act_sent[order[si]];
+          const std::vector<unsigned>& sentencePos=corpus.sentencesPos[order[si]]; 
+          const std::vector<unsigned>& actions=corpus.correct_act_sent[order[si]];
            ComputationGraph hg;
            //cerr << "Start word:" << corpus.intToWords[sentence[0]]<<corpus.intToWords[sentence[1]] << endl;
            std::vector<std::vector<string>> cand;
@@ -1113,27 +1218,27 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
         auto t_start = std::chrono::high_resolution_clock::now();
         std::vector<std::vector<std::vector<string>>> refs, hyps;
         for (unsigned sii = 0; sii < dev_size; ++sii) {
-           const std::vector<unsigned>& sentence=corpus.sentencesDev[sii];
-     const std::vector<unsigned>& sentencePos=corpus.sentencesPosDev[sii]; 
-     const std::vector<unsigned>& actions=corpus.correct_act_sentDev[sii];
-           std::vector<unsigned> tsentence=sentence;
-           for (auto& w : tsentence)
-             if (training_vocab.count(w) == 0) w = kUNK;
+          const std::vector<unsigned>& sentence=corpus.sentencesDev[sii];
+          const std::vector<unsigned>& sentencePos=corpus.sentencesPosDev[sii]; 
+          const std::vector<unsigned>& actions=corpus.correct_act_sentDev[sii];
+          std::vector<unsigned> tsentence=sentence;
+          for (auto& w : tsentence)
+            if (training_vocab.count(w) == 0) w = kUNK;
 
-           ComputationGraph hg;
-           std::vector<std::vector<string>> cand;
-            std::vector<unsigned> pred = log_prob_parser(&hg,sentence,tsentence,sentencePos,std::vector<unsigned>(),&right,cand);
-           double lp = 0;
-           llh -= lp;
-           trs += actions.size();
-           //cerr << "start word:" << sii << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]] << endl;
-           std::vector<std::vector<string>> ref = compute_heads(sentence, actions);
-           std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
-           //output_conll(sentence, corpus.intToWords, ref, hyp);
-           //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
-           //total_heads += sentence.size() - 1;
-           refs.push_back(ref);
-           hyps.push_back(hyp);
+          ComputationGraph hg;
+          std::vector<std::vector<string>> cand;
+          std::vector<unsigned> pred = log_prob_parser(&hg,sentence,tsentence,sentencePos,std::vector<unsigned>(),&right,cand);
+          double lp = 0;
+          llh -= lp;
+          trs += actions.size();
+          //cerr << "start word:" << sii << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]] << endl;
+          std::vector<std::vector<string>> ref = compute_heads(sentence, actions);
+          std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
+          //output_conll(sentence, corpus.intToWords, ref, hyp);
+          //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
+          //total_heads += sentence.size() - 1;
+          refs.push_back(ref);
+          hyps.push_back(hyp);
         }
         map<string, double> results = evaluate(refs, hyps);
         auto t_end = std::chrono::high_resolution_clock::now();
@@ -1208,6 +1313,10 @@ void LSTMParser::predict_dev() {
       //cerr << "compute heads "<<endl;
       std::vector<std::vector<string>> ref = compute_heads(sentence, actions);
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
+      if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+            miss_head++;
+            cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
+      }
       refs.push_back(ref);
       hyps.push_back(hyp);
 
@@ -1218,25 +1327,21 @@ void LSTMParser::predict_dev() {
         }
       }*/
 
-      if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
-            miss_head++;
-            cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
-        }
       //cerr<<"write to file" <<endl;
-      //output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
+      output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
       //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
       //total_heads += sentence.size() - 1;
       if (sii%100 == 0)
-	cerr << "sentence: " << sii << endl;
+	       cerr << "sentence: " << sii << endl;
     }
     
-    for (unsigned sii = 0; sii < corpus_size; ++sii) {
+    /*for (unsigned sii = 0; sii < corpus_size; ++sii) {
       const std::vector<unsigned>& sentence = corpus.sentencesDev[sii];
       const std::vector<unsigned>& sentencePos = corpus.sentencesPosDev[sii];
       const std::vector<string>& sentenceUnkStr = corpus.sentencesStrDev[sii]; 
       std::vector<std::vector<string>> hyp = hyps[sii];
       output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
-    } 
+    }*/ 
 
     //cerr << "miss head number: " << miss_head << endl;
     map<string, double> results = evaluate(refs, hyps);

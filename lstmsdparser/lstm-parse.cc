@@ -79,21 +79,21 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(list - listbased, spl - simplified)")
         ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
         ("dynet_seed,y", po::value<string>(), "Dynet seed for initialization")
-	("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
+        ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
         ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
         ("model,m", po::value<string>(), "Load saved model from this file")
         ("use_pos_tags,P", "make POS tags visible to parser")
         ("use_bilstm,B", "use bilstm for buffer")
         ("use_treelstm,R", "use treelstm for subtree in stack")
         ("layers", po::value<unsigned>()->default_value(2), "number of LSTM layers")
-        ("action_dim", po::value<unsigned>()->default_value(16), "action embedding size")
-        ("input_dim", po::value<unsigned>()->default_value(32), "input embedding size")
-        ("hidden_dim", po::value<unsigned>()->default_value(64), "hidden dimension")
-        ("bilstm_hidden_dim", po::value<unsigned>()->default_value(32), "bilstm hidden dimension")
-        ("pretrained_dim", po::value<unsigned>()->default_value(50), "pretrained input dimension")
-        ("pos_dim", po::value<unsigned>()->default_value(12), "POS dimension")
-        ("rel_dim", po::value<unsigned>()->default_value(10), "relation dimension")
-        ("lstm_input_dim", po::value<unsigned>()->default_value(60), "LSTM input dimension")
+        ("action_dim", po::value<unsigned>()->default_value(50), "action embedding size")
+        ("input_dim", po::value<unsigned>()->default_value(100), "input embedding size")
+        ("hidden_dim", po::value<unsigned>()->default_value(200), "hidden dimension")
+        ("bilstm_hidden_dim", po::value<unsigned>()->default_value(100), "bilstm hidden dimension")
+        ("pretrained_dim", po::value<unsigned>()->default_value(100), "pretrained input dimension")
+        ("pos_dim", po::value<unsigned>()->default_value(50), "POS dimension")
+        ("rel_dim", po::value<unsigned>()->default_value(50), "relation dimension")
+        ("lstm_input_dim", po::value<unsigned>()->default_value(200), "LSTM input dimension")
         ("train,t", "Should training be run?")
         ("words,w", po::value<string>(), "Pretrained word embeddings")
         ("help,h", "Help");
@@ -635,15 +635,15 @@ vector<unsigned> log_prob_parser(ComputationGraph* hg,
       }
       Expression p_t;
       if (use_bilstm){
-	Expression fwbuf,bwbuf;
-	fwbuf = bilstm_outputs[sent.size() - bufferi.back()].first - bilstm_outputs[1].first;
-	bwbuf = bilstm_outputs[1].second - bilstm_outputs[sent.size() - bufferi.back()].second; 
+	      Expression fwbuf,bwbuf;
+        fwbuf = bilstm_outputs[sent.size() - bufferi.back()].first - bilstm_outputs[1].first;
+        bwbuf = bilstm_outputs[1].second - bilstm_outputs[sent.size() - bufferi.back()].second; 
         // [bilstm] p_t = pbias + S * slstm + P * plstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
         /*p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
           fwB, bilstm_outputs[sent.size() - bufferi.back()].first, bwB, bilstm_outputs[sent.size() - bufferi.back()].second,
           A, action_lstm.back()});*/
-	p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
-          fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
+	      p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+                                fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
         //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
       }else{
         // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
@@ -1454,7 +1454,7 @@ int main(int argc, char** argv) {
 
   if (conf.count("words")) {
     pretrained[kUNK] = vector<float>(PRETRAINED_DIM, 0);
-    cerr << "Loading from " << conf["words"].as<string>() << " with" << PRETRAINED_DIM << " dimensions\n";
+    cerr << "Loading from " << conf["words"].as<string>() << " with " << PRETRAINED_DIM << " dimensions\n";
     ifstream in(conf["words"].as<string>().c_str());
     string line;
     getline(in, line);

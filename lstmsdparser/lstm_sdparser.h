@@ -30,6 +30,8 @@
 #include "dynet/lstm.h"
 #include "dynet/rnn.h"
 #include "lstmsdparser/c2.h"
+#include "lstmsdparser/layers.h"
+#include "lstmsdparser/theirtreelstm.h"
 
 namespace ltp {
 namespace lstmsdparser {
@@ -59,8 +61,12 @@ typedef struct Options {
 	unsigned LSTM_INPUT_DIM; // 200
 	unsigned POS_DIM; // 50
 	unsigned REL_DIM; // 50
+  unsigned BILSTM_HIDDEN_DIM; // 100
 	std::string transition_system; // "list"
+  std::string dynet_seed;
 	bool USE_POS; // true
+  bool USE_BILSTM; // true
+  bool USE_TREELSTM; // true
 }Options;
 
 static volatile bool requested_stop;
@@ -86,6 +92,8 @@ public:
   LSTMBuilder buffer_lstm;
   LSTMBuilder pass_lstm; // lstm for pass buffer
   LSTMBuilder action_lstm;
+  BidirectionalLSTMLayer buffer_bilstm; //[bilstm] bilstm for buffer
+  TheirTreeLSTMBuilder tree_lstm; // [treelstm] for subtree
   LookupParameter p_w; // word embeddings
   LookupParameter p_t; // pretrained word embeddings (not updated)
   LookupParameter p_a; // input action embeddings
@@ -94,6 +102,8 @@ public:
   Parameter p_pbias; // parser state bias
   Parameter p_A; // action lstm to parser state
   Parameter p_B; // buffer lstm to parser state
+  Parameter p_fwB; // [bilstm] buffer forward lstm to parser state
+  Parameter p_bwB; // [bilstm] buffer backward lstm to parser state
   Parameter p_P; // pass lstm to parser state
   Parameter p_S; // stack lstm to parser state
   Parameter p_H; // head matrix for composition function
@@ -120,11 +130,14 @@ public:
 
   void get_dynamic_infos();
 
-  bool has_path_to(int w1, int w2, const std::vector<bool>  dir_graph []);
+  //bool has_path_to(int w1, int w2, const std::vector<bool>  dir_graph []);
+  bool has_path_to(int w1, int w2, const std::vector<std::vector<bool>>& graph);
 
   bool has_path_to(int w1, int w2, const std::vector<std::vector<string>>& graph);
 
-  bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, const std::vector<std::vector<std::string>> dir_graph,//const std::vector<bool>  dir_graph [], 
+  vector<unsigned> get_children(unsigned id, const vector<vector<bool>> graph);
+
+  bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, const std::vector<std::vector<bool>> dir_graph,//const std::vector<bool>  dir_graph [], 
                                                 const std::vector<int>& stacki, const std::vector<int>& bufferi);
   std::vector<std::vector<string>> compute_heads(const std::vector<unsigned>& sent, const std::vector<unsigned>& actions);
   std::vector<unsigned> log_prob_parser(ComputationGraph* hg,

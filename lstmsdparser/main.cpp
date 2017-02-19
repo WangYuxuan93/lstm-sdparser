@@ -24,14 +24,18 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("test_data,p", po::value<string>(), "Test corpus")
         ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(list - listbased, spl - simplified)")
         ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
+        ("dynet_seed,y", po::value<string>(), "Dynet seed for initialization")
         ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
         ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
         ("model,m", po::value<string>(), "Load saved model from this file")
         ("use_pos_tags,P", "make POS tags visible to parser")
+        ("use_bilstm,B", "use bilstm for buffer")
+        ("use_treelstm,R", "use treelstm for subtree in stack")
         ("layers", po::value<unsigned>()->default_value(2), "number of LSTM layers")
         ("action_dim", po::value<unsigned>()->default_value(50), "action embedding size")
         ("input_dim", po::value<unsigned>()->default_value(100), "input embedding size")
         ("hidden_dim", po::value<unsigned>()->default_value(200), "hidden dimension")
+        ("bilstm_hidden_dim", po::value<unsigned>()->default_value(100), "bilstm hidden dimension")
         ("pretrained_dim", po::value<unsigned>()->default_value(100), "pretrained input dimension")
         ("pos_dim", po::value<unsigned>()->default_value(50), "POS dimension")
         ("rel_dim", po::value<unsigned>()->default_value(50), "relation dimension")
@@ -64,6 +68,12 @@ int main(int argc, char** argv) {
   //ltp::lstmsdparser::Sizes System_size;
   ltp::lstmsdparser::Options Opt;
   Opt.USE_POS = conf.count("use_pos_tags");
+  Opt.USE_BILSTM = conf.count("use_bilstm");
+  Opt.USE_TREELSTM = conf.count("use_treelstm");
+  if (Opt.USE_BILSTM)
+    cerr << "Using bilstm for buffer." << endl;
+  if (Opt.USE_TREELSTM)
+    cerr << "Using treelstm for subtree in stack." << endl;
 
   Opt.transition_system = conf["transition_system"].as<string>();
   cerr << "Transition System: " << Opt.transition_system << endl;
@@ -76,7 +86,10 @@ int main(int argc, char** argv) {
   Opt.LSTM_INPUT_DIM = conf["lstm_input_dim"].as<unsigned>();
   Opt.POS_DIM = conf["pos_dim"].as<unsigned>();
   Opt.REL_DIM = conf["rel_dim"].as<unsigned>();
-
+  Opt.BILSTM_HIDDEN_DIM = conf["bilstm_hidden_dim"].as<unsigned>(); // [bilstm]
+  if (conf.count("dynet_seed")){
+    Opt.dynet_seed = conf["dynet_seed"].as<string>();
+  }
 
   const unsigned unk_strategy = conf["unk_strategy"].as<unsigned>();
 
@@ -91,6 +104,8 @@ int main(int argc, char** argv) {
   assert(unk_prob >= 0.); assert(unk_prob <= 1.);
   ostringstream os;
   os << "parser_" << (Opt.USE_POS ? "pos" : "nopos")
+     << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
+     << '_' << (Opt.USE_TREELSTM ? "tr" : "notr")
      << '_' << conf["data_type"].as<string>()
      << '_' << Opt.LAYERS
      << '_' << Opt.INPUT_DIM
@@ -99,8 +114,9 @@ int main(int argc, char** argv) {
      << '_' << Opt.LSTM_INPUT_DIM
      << '_' << Opt.POS_DIM
      << '_' << Opt.REL_DIM
+     << '_' << Opt.BILSTM_HIDDEN_DIM
      << "-pid" << getpid() << ".params";
-  
+
   const string fname = os.str();
   cerr << "Writing parameters to file: " << fname << endl;
 
@@ -110,6 +126,7 @@ int main(int argc, char** argv) {
 
   parser->DEBUG = true;
   if (conf.count("model")){
+    parser -> set_options(Opt); // only for test
     parser -> load(conf["model"].as<string>(), conf["training_data"].as<string>(), 
                   conf["words"].as<string>(), conf["dev_data"].as<string>() );
   }
