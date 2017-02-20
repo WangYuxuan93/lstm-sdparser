@@ -239,11 +239,12 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
         }
         return false;
   }
-    else if (transition_system == "spl"){
+    else if (transition_system == "tree"){
         int s0 = stacki.back();
         int b0 = bufferi.back();
         int root_num = 0;
         int s0_head_num = 0;
+        int b0_head_num = 0;
         for (int i = 0; i < (int)dir_graph[root].size(); ++i)
             if (dir_graph[root][i])
                 root_num ++;
@@ -251,6 +252,10 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             for (int i = 0; i < (int)dir_graph[root].size(); ++i)
                 if (dir_graph[i][s0])
                     s0_head_num ++;
+        if (b0 >= 0)
+            for (int i = 0; i < (int)dir_graph[root].size(); ++i)
+                if (dir_graph[i][b0])
+                    b0_head_num ++;
         if (a[0] == 'L'){
             string rel = a.substr(3, a.size() - 4);
             if (bsize < 2 || ssize < 2) return true;
@@ -259,15 +264,18 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
             if (b0 == (int)root && !(rel == "Root" && root_num == 0 && s0_head_num == 0)) return true;
             if (b0 != (int)root && rel == "Root") return true;
+            if (s0_head_num >= 1) return true; // add for original list-based
         }
         if (a[0] == 'R'){
             if (bsize < 2 || ssize < 2) return true;
             if (has_path_to(b0, s0, dir_graph)) return true;
             if (b0 == (int)root) return true;
+            if (b0_head_num >= 1) return true; // add for original list-based
         }
         if (a[0] == 'N'){
             if (a[1] == 'S' && bsize < 2) return true;
             //if (a[1] == 'S' && bsize == 2 && ssize > 2) return true;
+            if (a[1] == 'R' && !(ssize > 1 && s0_head_num > 0)) return true;
             if (a[1] == 'P' && !(ssize > 1 && bsize > 1))  return true;
         }
         return false;
@@ -311,7 +319,7 @@ vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, c
 
       cerr << "action:" << actionString << endl;*/
 
-        if (transition_system == "list"){
+        if (transition_system == "list" || transition_system == "tree"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
                 assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 int passi_size = (int)passi.size();
@@ -660,9 +668,9 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       const char ac2 = actionString[1];
       //cerr << ac << ac2 << endl;
 
-        if (transition_system == "list"){
+        if (transition_system == "list" || transition_system == "tree"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
-                assert(buffer.size() > 1); // dummy symbol means > 1 (not >= 1)
+                assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 int pass_size = (int)pass.size();
                 for (int i = 1; i < pass_size; i++){  //do not move pass_guard
                     stack.push_back(pass.back());
@@ -680,14 +688,14 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 stacki.push_back(bufferi.back());
                 bufferi.pop_back();
             } else if (ac=='N' && ac2=='R'){
-                assert(stack.size() > 1);
+                assert(stacki.size() > 1);
                 if (word_rep)
                     (*word_rep)[stacki.back()] = stack.back();
                 stack.pop_back();
                 stacki.pop_back();
                 stack_lstm.rewind_one_step();
             } else if (ac=='N' && ac2=='P'){
-                assert(stack.size() > 1);
+                assert(stacki.size() > 1);
                 pass.push_back(stack.back());
                 pass_lstm.add_input(stack.back());
                 passi.push_back(stacki.back());
@@ -695,7 +703,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 stacki.pop_back();
                 stack_lstm.rewind_one_step();
             } else if (ac=='L'){ // LEFT-REDUCE or LEFT-PASS
-                assert(stack.size() > 1 && buffer.size() > 1);
+                assert(stacki.size() > 1 && bufferi.size() > 1);
                 Expression dep, head;
                 unsigned depi, headi;
                 dep = stack.back();
@@ -738,7 +746,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                     passi.push_back(depi);
                 }
             } else if (ac=='R'){ // RIGHT-SHIFT or RIGHT-PASSA
-                assert(stack.size() > 1 && buffer.size() > 1);
+                assert(stacki.size() > 1 && bufferi.size() > 1);
                 Expression dep, head;
                 unsigned depi, headi;
                 dep = buffer.back();
@@ -1054,12 +1062,20 @@ int LSTMParser::process_headless(vector<vector<string>>& hyp, vector<vector<stri
     int root = hyp.size() - 1;
     int miss_head_num = 0;
     bool has_head_flag = false;
+    int head; // for tree
     for (unsigned i = 0; i < (hyp.size() - 1); ++i){
         has_head_flag = false;
+        head = 0; // for tree
         for (unsigned j = 0; j < hyp.size(); ++j){
-            if (hyp[j][i] != REL_NULL)
+            if (hyp[j][i] != REL_NULL){
                 has_head_flag = true;
+                head ++;
+            }
         }
+        if (transition_system == "tree" && head > 1){
+            cerr << "multi head!" << endl;
+        }
+
         if (!has_head_flag){
             miss_head_num ++;
             // use candidate relations
@@ -1244,8 +1260,10 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
         auto t_end = std::chrono::high_resolution_clock::now();
         cerr << "  **dev (iter=" << iter << " epoch=" << (tot_seen / corpus.nsentences) << ")\tllh=" << llh 
                 << " ppl: " << exp(llh / trs) << " err: " << (trs - right) / trs << " LF: " << results["LF"] << " UF:" << results["UF"] 
+                << " NLF: " << results["NLF"] << " NUF:" << results["NUF"]
                 << " LP:" << results["LP"] << " LR:" << results["LR"] << " UP:" << results["UP"] << " UR:" <<results["UR"]
                 << "\t[" << dev_size << " sents in " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
+
         if (results["LF"] > best_LF) {
           cerr << "---saving model to " << fname << "---" << endl;
           best_LF = results["LF"];
@@ -1326,13 +1344,12 @@ void LSTMParser::predict_dev() {
                 cerr << "from " << i << " to " << j << " rel: " << hyp[i][j] << endl;
         }
       }*/
-
+      if (sii%100 == 0)
+         cerr << "sentence: " << sii << endl;
       //cerr<<"write to file" <<endl;
       output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
       //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
       //total_heads += sentence.size() - 1;
-      if (sii%100 == 0)
-	       cerr << "sentence: " << sii << endl;
     }
     
     /*for (unsigned sii = 0; sii < corpus_size; ++sii) {
@@ -1474,15 +1491,17 @@ map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& r
     bool correct_labeled_flag_wo_punc = true;
     bool correct_unlabeled_flag_wo_punc = true;
 
-    //int correct_non_local_arcs = 0;
-    //int correct_non_local_heads = 0;
+    int correct_non_local_arcs = 0;
+    int correct_non_local_rels = 0;
 
-    //int sum_non_local_gold_arcs = 0;
-    //int sum_non_local_pred_arcs = 0;
+    int sum_non_local_gold_arcs = 0;
+    int sum_non_local_pred_arcs = 0;
     for (int i = 0; i < (int)refs.size(); ++i){
         vector<unsigned> sentPos = sentencesPos[i];
         unsigned sent_len = refs[i].size();
         assert(sentPos.size() == sent_len);
+        vector<int> gold_head(sent_len, 0);
+        vector<int> pred_head(sent_len, 0);
         correct_labeled_flag_wo_punc = true;
         correct_unlabeled_flag_wo_punc = true;
         for (unsigned j = 0; j < sent_len; ++j){
@@ -1490,8 +1509,10 @@ map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& r
                 if (refs[i][j][k] != REL_NULL){
                     sum_gold_arcs ++;
                     //cerr << " id : " << k + 1 << " POS: " << sentPos[k] << endl;
-                    if (sentPos[k] != punc)
+                    if (sentPos[k] != punc){
                         sum_gold_arcs_wo_punc ++;
+                        gold_head[k]++;
+                    }
                     if (hyps[i][j][k] != REL_NULL){
                         correct_arcs ++;
                         if (sentPos[k] != punc)
@@ -1512,8 +1533,10 @@ map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& r
                 }
                 if (hyps[i][j][k] != REL_NULL){
                     sum_pred_arcs ++;
-                    if (sentPos[k] != punc)
+                    if (sentPos[k] != punc){
                         sum_pred_arcs_wo_punc ++;
+                        pred_head[k] ++;
+                    }
                 }
             }//k
         }//j
@@ -1522,15 +1545,39 @@ map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& r
             if (correct_labeled_flag_wo_punc)
                 correct_labeled_graphs_wo_punc ++;
         }
+        for (unsigned c = 0; c < sent_len; ++c){
+            if (gold_head[c] == 1 && pred_head[c] == 1)
+                continue;
+            sum_non_local_gold_arcs += gold_head[c];
+            sum_non_local_pred_arcs += pred_head[c];
+            for (unsigned h = 0; h < sent_len; ++h){
+                if (refs[i][h][c] != REL_NULL && sentPos[c] != punc 
+                    && hyps[i][h][c] != REL_NULL){
+                    correct_non_local_arcs ++;
+                    if (refs[i][h][c] == hyps[i][h][c]){
+                        correct_non_local_rels ++;
+                    }
+                }          
+            }//h
+        }//c
     }//i
     //int sum_graphs = (int)refs.size();
     //cerr << "cor: arcs: " << correct_arcs_wo_punc << " rels: " << correct_rels_wo_punc 
             //<< "\nsum: gold arcs: " << sum_gold_arcs_wo_punc << " pred arcs: " << sum_pred_arcs_wo_punc << endl;
     map<string, double> result;
+    if (sum_non_local_gold_arcs == 0)
+      sum_non_local_gold_arcs = 1;
+    if (sum_non_local_pred_arcs == 0)
+      sum_non_local_pred_arcs = 1;
     result["UR"] = correct_arcs_wo_punc * 100.0 / sum_gold_arcs_wo_punc;
     result["UP"] = correct_arcs_wo_punc * 100.0 / sum_pred_arcs_wo_punc;
     result["LR"] = correct_rels_wo_punc * 100.0 / sum_gold_arcs_wo_punc;
     result["LP"] = correct_rels_wo_punc * 100.0 / sum_pred_arcs_wo_punc;
+
+    result["NUR"] = correct_non_local_arcs * 100.0 / sum_non_local_gold_arcs;
+    result["NUP"] = correct_non_local_arcs * 100.0 / sum_non_local_pred_arcs;
+    result["NLR"] = correct_non_local_rels * 100.0 / sum_non_local_gold_arcs;
+    result["NLP"] = correct_non_local_rels * 100.0 / sum_non_local_pred_arcs;
 
     if (sum_pred_arcs_wo_punc == 0){
         result["LP"] = 0;
@@ -1539,10 +1586,18 @@ map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& r
 
     result["UF"] = 2 * result["UR"] * result["UP"] / (result["UR"] + result["UP"]);   
     result["LF"] = 2 * result["LR"] * result["LP"] / (result["LR"] + result["LP"]);
+
+    result["NUF"] = 2 * result["NUR"] * result["NUP"] / (result["NUR"] + result["NUP"]);   
+    result["NLF"] = 2 * result["NLR"] * result["NLP"] / (result["NLR"] + result["NLP"]);
+
     if (result["LR"] == 0 && result["LP"] == 0)
         result["LF"] = 0;
     if (result["UR"] == 0 && result["UP"] == 0)
         result["UF"] = 0;
+    if (result["NLR"] == 0 && result["NLP"] == 0)
+        result["NLF"] = 0;
+    if (result["NUR"] == 0 && result["NUP"] == 0)
+        result["NUF"] = 0;
     return result;
 }
 

@@ -22,7 +22,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("training_data,T", po::value<string>(), "List of Transitions - Training corpus")
         ("dev_data,d", po::value<string>(), "Development corpus")
         ("test_data,p", po::value<string>(), "Test corpus")
-        ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(list - listbased, spl - simplified)")
+        ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(list - listbased, tree - tree listbased)")
         ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
         ("dynet_seed,y", po::value<string>(), "Dynet seed for initialization")
         ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
@@ -103,19 +103,20 @@ int main(int argc, char** argv) {
   const double unk_prob = conf["unk_prob"].as<double>();
   assert(unk_prob >= 0.); assert(unk_prob <= 1.);
   ostringstream os;
-  os << "parser_" << (Opt.USE_POS ? "pos" : "nopos")
-     << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
-     << '_' << (Opt.USE_TREELSTM ? "tr" : "notr")
-     << '_' << conf["data_type"].as<string>()
-     << '_' << Opt.LAYERS
-     << '_' << Opt.INPUT_DIM
-     << '_' << Opt.HIDDEN_DIM
-     << '_' << Opt.ACTION_DIM
-     << '_' << Opt.LSTM_INPUT_DIM
-     << '_' << Opt.POS_DIM
-     << '_' << Opt.REL_DIM
-     << '_' << Opt.BILSTM_HIDDEN_DIM
-     << "-pid" << getpid() << ".params";
+  os << "parser_" << Opt.transition_system
+    << '_' << (Opt.USE_POS ? "pos" : "nopos")
+    << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
+    << '_' << (Opt.USE_TREELSTM ? "tr" : "notr")
+    << '_' << conf["data_type"].as<string>()
+    << '_' << Opt.LAYERS
+    << '_' << Opt.INPUT_DIM
+    << '_' << Opt.HIDDEN_DIM
+    << '_' << Opt.ACTION_DIM
+    << '_' << Opt.LSTM_INPUT_DIM
+    << '_' << Opt.POS_DIM
+    << '_' << Opt.REL_DIM
+    << '_' << Opt.BILSTM_HIDDEN_DIM
+    << "-pid" << getpid() << ".params";
 
   const string fname = os.str();
   cerr << "Writing parameters to file: " << fname << endl;
