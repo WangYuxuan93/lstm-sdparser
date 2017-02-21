@@ -426,14 +426,14 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                      const vector<unsigned>& sent,  // sent with oovs replaced
                      const vector<unsigned>& sentPos,
                      const vector<unsigned>& correct_actions,
-                     //const vector<string>& setOfActions,
-                     //const map<unsigned, std::string>& intToWords,
+                     const vector<string>& setOfActions,
+                     const map<unsigned, std::string>& intToWords,
                      double *right, 
                      vector<vector<string>>& cand,
                      vector<Expression>* word_rep,
                      Expression * act_rep) {
-    const vector<string> setOfActions = corpus.actions;
-    const map<unsigned, std::string> intToWords = corpus.intToWords;
+    //const vector<string> setOfActions = corpus.actions;
+    //const map<unsigned, std::string> intToWords = corpus.intToWords;
 
     vector<unsigned> results;
     const bool build_training_graph = correct_actions.size() > 0;
@@ -907,6 +907,32 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     return results;
   }
 
+  // run beam search
+  vector<unsigned> log_prob_parser_beam(ComputationGraph *hg, 
+                    const vector<unsigned> &raw_sent,
+                    const vector<unsigned> &sent, 
+                    const vector<unsigned> &sentPos,
+                    const vector<unsigned> &correct_actions, 
+                    const vector<string> &setOfActions,
+                    const map<unsigned, std::string> &intToWords, 
+                    double *right, 
+                    unsigned beam_size,
+                    DataGatherer &dg) {
+        //for (unsigned i = 0; i < sent.size(); ++i) cerr << ' ' << intToWords.find(sent[i])->second;
+        //cerr << endl;
+
+        //cerr << "\nstarting with memory usage: " << getMemoryUsage() << "\n";
+        //const vector<string> setOfActions = corpus.actions;
+        //const map<unsigned, std::string> intToWords = corpus.intToWords;
+
+        auto overall_start = std::chrono::high_resolution_clock::now();
+
+        vector<unsigned> results;
+        const bool build_training_graph = correct_actions.size() > 0;
+        
+        return results;
+  }
+
   void LSTMParser::process_headless_search_all(const vector<unsigned>& sent, const vector<unsigned>& sentPos, 
                                                         const vector<string>& setOfActions, vector<Expression>& word_rep, 
                                                         Expression& act_rep, int n, int sent_len, int dir, map<int, double>* scores, 
@@ -1202,7 +1228,7 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
            //cerr << "Start word:" << corpus.intToWords[sentence[0]]<<corpus.intToWords[sentence[1]] << endl;
            std::vector<std::vector<string>> cand;
 
-           log_prob_parser(&hg,sentence,tsentence,sentencePos,actions,&right,cand);
+           log_prob_parser(&hg,sentence,tsentence,sentencePos,actions,corpus.actions,corpus.intToWords,&right,cand);
            double lp = as_scalar(hg.incremental_forward((VariableIndex)(hg.nodes.size() - 1)));
            if (lp < 0) {
              cerr << "Log prob < 0 on sentence " << order[si] << ": lp=" << lp << endl;
@@ -1243,7 +1269,8 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
 
           ComputationGraph hg;
           std::vector<std::vector<string>> cand;
-          std::vector<unsigned> pred = log_prob_parser(&hg,sentence,tsentence,sentencePos,std::vector<unsigned>(),&right,cand);
+          std::vector<unsigned> pred = log_prob_parser(&hg,sentence,tsentence,sentencePos,std::vector<unsigned>(),
+                                                        corpus.actions,corpus.intToWords,&right,cand);
           double lp = 0;
           llh -= lp;
           trs += actions.size();
@@ -1315,8 +1342,8 @@ void LSTMParser::predict_dev() {
 
       {
       ComputationGraph cg;
-      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
-                                                         &right, cand, &word_rep, &act_rep);
+      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                              corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
       }
       /*cerr << cand.size() << endl;
       for (unsigned i = 0; i < cand.size(); ++i){
@@ -1419,7 +1446,7 @@ void LSTMParser::predict(std::vector<std::vector<string>> &hyp, const std::vecto
       {
       ComputationGraph cg;
       pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
-                                                         &right, cand, &word_rep, &act_rep);
+                             corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
       }
       hyp = compute_heads(sentence, pred);
       //cerr << "hyp length: " << hyp.size() << " " << hyp[0].size() << endl;

@@ -69,6 +69,12 @@ typedef struct Options {
   bool USE_TREELSTM; // true
 }Options;
 
+struct DataGatherer {
+    unsigned sentences_parsed = 0;
+    float decisions_made = 0;
+    float m2_decisions_made = 0;
+};
+
 static volatile bool requested_stop;
 
 class LSTMParser {
@@ -145,12 +151,23 @@ public:
                      const std::vector<unsigned>& sent,  // sent with oovs replaced
                      const std::vector<unsigned>& sentPos,
                      const std::vector<unsigned>& correct_actions,
-                     //const std::vector<string>& setOfActions,
-                     //const map<unsigned, std::string>& intToWords,
+                     const std::vector<string>& setOfActions,
+                     const map<unsigned, std::string>& intToWords,
                      double *right, 
                      std::vector<std::vector<string>>& cand,
                      std::vector<Expression>* word_rep = NULL,
                      Expression * act_rep = NULL);
+
+  std::vector<unsigned> log_prob_parser_beam(ComputationGraph *hg, 
+                      const vector<unsigned> &raw_sent,
+                      const vector<unsigned> &sent, 
+                      const vector<unsigned> &sentPos,
+                      const vector<unsigned> &correct_actions, 
+                      const vector<string> &setOfActions,
+                      const map<unsigned, std::string> &intToWords, 
+                      double *right, 
+                      unsigned beam_size,
+                      DataGatherer &dg);
 
   int process_headless(std::vector<std::vector<string>>& hyp, std::vector<std::vector<string>>& cand, std::vector<Expression>& word_rep, 
                                     Expression& act_rep, const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos);
