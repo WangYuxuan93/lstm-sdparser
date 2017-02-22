@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
   cerr << endl;
-
+  
   po::variables_map conf;
   InitCommandLine(argc, argv, &conf);
   //ltp::lstmsdparser::Sizes System_size;
