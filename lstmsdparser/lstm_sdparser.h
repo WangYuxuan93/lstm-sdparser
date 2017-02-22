@@ -32,6 +32,7 @@
 #include "lstmsdparser/c2.h"
 #include "lstmsdparser/layers.h"
 #include "lstmsdparser/theirtreelstm.h"
+#include "utils.hpp"
 
 namespace ltp {
 namespace lstmsdparser {
