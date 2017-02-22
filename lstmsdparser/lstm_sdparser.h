@@ -66,6 +66,7 @@ typedef struct Options {
   unsigned BILSTM_HIDDEN_DIM; // 100
 	std::string transition_system; // "list"
   std::string dynet_seed;
+  std::string dynet_mem;
 	bool USE_POS; // true
   bool USE_BILSTM; // true
   bool USE_TREELSTM; // true

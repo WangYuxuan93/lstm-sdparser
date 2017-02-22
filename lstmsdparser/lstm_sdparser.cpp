@@ -19,7 +19,7 @@ std::string StrToLower(const std::string s){
 //struct LSTMParser {
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100,
-                               "list", "", true, false, false}) {}
+                               "list", "", "4000", true, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -60,7 +60,7 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   int dy_argc = 3;
   dy_argv[0] = "dynet";
   dy_argv[1] = "--dynet-mem";
-  dy_argv[2] = "2000";
+  dy_argv[2] = (char*)Opt.dynet_mem.c_str();
   if (Opt.dynet_seed.length() > 0){
     dy_argc = 5;
     dy_argv[3] = "--dynet-seed";

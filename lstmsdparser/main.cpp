@@ -24,7 +24,8 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("test_data,p", po::value<string>(), "Test corpus")
         ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(list - listbased, tree - tree listbased)")
         ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
-        ("dynet_seed,y", po::value<string>(), "Dynet seed for initialization")
+        ("dynet_seed", po::value<string>(), "Dynet seed for initialization")
+        ("dynet_mem", po::value<string>()->default_value("4000"), "Dynet memory size (MB) for initialization")
         ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
         ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
         ("model,m", po::value<string>(), "Load saved model from this file")
@@ -89,6 +90,9 @@ int main(int argc, char** argv) {
   Opt.BILSTM_HIDDEN_DIM = conf["bilstm_hidden_dim"].as<unsigned>(); // [bilstm]
   if (conf.count("dynet_seed")){
     Opt.dynet_seed = conf["dynet_seed"].as<string>();
+  }
+  if (conf.count("dynet_mem")){
+    Opt.dynet_mem = conf["dynet_mem"].as<string>();
   }
 
   const unsigned unk_strategy = conf["unk_strategy"].as<unsigned>();
