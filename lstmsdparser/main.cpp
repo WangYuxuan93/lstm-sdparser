@@ -31,6 +31,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("use_pos_tags,P", "make POS tags visible to parser")
         ("use_bilstm,B", "use bilstm for buffer")
         ("use_treelstm,R", "use treelstm for subtree in stack")
+        ("beam_size,b", po::value<unsigned>()->default_value(0), "beam size")
         ("layers", po::value<unsigned>()->default_value(2), "number of LSTM layers")
         ("action_dim", po::value<unsigned>()->default_value(50), "action embedding size")
         ("input_dim", po::value<unsigned>()->default_value(100), "input embedding size")
@@ -70,10 +71,13 @@ int main(int argc, char** argv) {
   Opt.USE_POS = conf.count("use_pos_tags");
   Opt.USE_BILSTM = conf.count("use_bilstm");
   Opt.USE_TREELSTM = conf.count("use_treelstm");
+  Opt.beam_size = conf.count("beam_size");
   if (Opt.USE_BILSTM)
     cerr << "Using bilstm for buffer." << endl;
   if (Opt.USE_TREELSTM)
     cerr << "Using treelstm for subtree in stack." << endl;
+  if (Opt.beam_size > 0)
+    cerr << "Using beam search, beam size: " << Opt.beam_size << endl;
 
   Opt.transition_system = conf["transition_system"].as<string>();
   cerr << "Transition System: " << Opt.transition_system << endl;
