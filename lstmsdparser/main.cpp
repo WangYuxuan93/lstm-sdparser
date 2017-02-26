@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
   Opt.USE_POS = conf.count("use_pos_tags");
   Opt.USE_BILSTM = conf.count("use_bilstm");
   Opt.USE_TREELSTM = conf.count("use_treelstm");
-  Opt.beam_size = conf.count("beam_size");
+  Opt.beam_size = conf["beam_size"].as<unsigned>();
   if (Opt.USE_BILSTM)
     cerr << "Using bilstm for buffer." << endl;
   if (Opt.USE_TREELSTM)

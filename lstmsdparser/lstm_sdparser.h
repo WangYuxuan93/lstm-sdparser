@@ -165,6 +165,7 @@ public:
 	Sizes System_size;
 	std::string transition_system;
   Model model;
+  DataGatherer dg;
 
   bool use_pretrained; // True if use pretraiend word embedding
   

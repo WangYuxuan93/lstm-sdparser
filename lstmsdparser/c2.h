@@ -140,9 +140,9 @@ inline void load_correct_actions(std::string file){
 			count = 1;
 			if (initial) {
         // the initial line in each sentence may look like:
-        // [][the-det, cat-noun, is-verb, on-adp, the-det, mat-noun, ,-punct, ROOT-ROOT]
+        // [][][the-det, cat-noun, is-verb, on-adp, the-det, mat-noun, ,-punct, ROOT-ROOT]
         // first, get rid of the square brackets.
-        lineS = lineS.substr(5, lineS.size() - 6);
+        lineS = lineS.substr(5, lineS.size() - 6); // 5, 6 for list-based , 3, 4 for std
         // read the initial line, token by token "the-det," "cat-noun," ...
         std::istringstream iss(lineS);
         do {

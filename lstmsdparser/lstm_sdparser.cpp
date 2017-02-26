@@ -1668,31 +1668,35 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
     while(!requested_stop) {
       ++iter;
       for (unsigned sii = 0; sii < status_every_i_iterations; ++sii) {
-           if (si == corpus.nsentences) {
+          if (si == corpus.nsentences) {
              si = 0;
              if (first) { first = false; } else { sgd.update_epoch(); }
              cerr << "**SHUFFLE\n";
              random_shuffle(order.begin(), order.end());
-           }
-           tot_seen += 1;
-           const std::vector<unsigned>& sentence=corpus.sentences[order[si]];
-           std::vector<unsigned> tsentence=sentence;
-           if (unk_strategy == 1) {
+          }
+          tot_seen += 1;
+          const std::vector<unsigned>& sentence=corpus.sentences[order[si]];
+          std::vector<unsigned> tsentence=sentence;
+          if (unk_strategy == 1) {
              for (auto& w : tsentence)
                if (singletons.count(w) && dynet::rand01() < unk_prob) w = kUNK;
-           }
+          }
           const std::vector<unsigned>& sentencePos=corpus.sentencesPos[order[si]]; 
           const std::vector<unsigned>& actions=corpus.correct_act_sent[order[si]];
-           ComputationGraph hg;
-           //cerr << "Start word:" << corpus.intToWords[sentence[0]]<<corpus.intToWords[sentence[1]] << endl;
-           std::vector<std::vector<string>> cand;
-
-           log_prob_parser(&hg,sentence,tsentence,sentencePos,actions,corpus.actions,corpus.intToWords,&right,cand);
-           double lp = as_scalar(hg.incremental_forward((VariableIndex)(hg.nodes.size() - 1)));
-           if (lp < 0) {
+          ComputationGraph hg;
+          //cerr << "Start word:" << corpus.intToWords[sentence[0]]<<corpus.intToWords[sentence[1]] << endl;
+          std::vector<std::vector<string>> cand;
+          if (Opt.beam_size == 0)
+            log_prob_parser(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
+                              corpus.intToWords, &right, cand);
+          else
+            log_prob_parser_beam(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
+                                    corpus.intToWords, &right, Opt.beam_size, dg);
+          double lp = as_scalar(hg.incremental_forward((VariableIndex)(hg.nodes.size() - 1)));
+          if (lp < 0) {
              cerr << "Log prob < 0 on sentence " << order[si] << ": lp=" << lp << endl;
              assert(lp >= 0.0);
-           }
+          }
            hg.backward((VariableIndex)(hg.nodes.size() - 1));
            sgd.update(1.0);
            llh += lp;
@@ -1728,8 +1732,13 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
 
           ComputationGraph hg;
           std::vector<std::vector<string>> cand;
-          std::vector<unsigned> pred = log_prob_parser(&hg,sentence,tsentence,sentencePos,std::vector<unsigned>(),
-                                                        corpus.actions,corpus.intToWords,&right,cand);
+          std::vector<unsigned> pred;
+          if (Opt.beam_size == 0)
+            pred = log_prob_parser(&hg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
+                                    corpus.actions, corpus.intToWords, &right, cand);
+          else
+            pred = log_prob_parser_beam(&hg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                                    corpus.actions, corpus.intToWords, &right, Opt.beam_size, dg);
           double lp = 0;
           llh -= lp;
           trs += actions.size();
