@@ -8,10 +8,18 @@ using namespace dynet;
 using namespace std;
 namespace po = boost::program_options;
 
+std::string StrToLower(const std::string s){
+  std::string str = s;
+  for (int i = 0; i < str.length(); ++i){
+    str[i] = tolower(str[i]);
+  }
+  return str;
+}
+
 //struct LSTMParser {
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 0, 
-                               "list", "", true, false, false}) {}
+                               "list", "", "4000", true, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -52,7 +60,7 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   int dy_argc = 3;
   dy_argv[0] = "dynet";
   dy_argv[1] = "--dynet-mem";
-  dy_argv[2] = "2000";
+  dy_argv[2] = (char*)Opt.dynet_mem.c_str();
   if (Opt.dynet_seed.length() > 0){
     dy_argc = 5;
     dy_argv[3] = "--dynet-seed";
@@ -223,8 +231,8 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             if (has_path_to(s0, b0, dir_graph)) return true;
             //if (b0 == root && rel != "Root") return true;
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
-            if (b0 == (int)root && !(rel == "Root" && root_num == 0 && s0_head_num == 0)) return true;
-            if (b0 != (int)root && rel == "Root") return true;
+            if (b0 == (int)root && !(StrToLower(rel) == "root" && root_num == 0 && s0_head_num == 0)) return true;
+            if (b0 != (int)root && StrToLower(rel) == "root") return true;
         }
         if (a[0] == 'R'){
             if (bsize < 2 || ssize < 2) return true;
@@ -262,8 +270,8 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             if (has_path_to(s0, b0, dir_graph)) return true;
             //if (b0 == root && rel != "Root") return true;
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
-            if (b0 == (int)root && !(rel == "Root" && root_num == 0 && s0_head_num == 0)) return true;
-            if (b0 != (int)root && rel == "Root") return true;
+            if (b0 == (int)root && !(StrToLower(rel) == "root" && root_num == 0 && s0_head_num == 0)) return true;
+            if (b0 != (int)root && StrToLower(rel) == "root") return true;
             if (s0_head_num >= 1) return true; // add for original list-based
         }
         if (a[0] == 'R'){

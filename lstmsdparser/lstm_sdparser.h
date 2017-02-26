@@ -45,6 +45,8 @@ constexpr const char* ROOT_SYMBOL = "ROOT";
 const std::string REL_NULL = "-NULL-";
 const std::string REL_EXIST = "-EXIST-";
 
+std::string StrToLower(const std::string s);
+
 typedef struct Sizes {
 	unsigned kROOT_SYMBOL;
 	unsigned ACTION_SIZE;
@@ -65,6 +67,7 @@ typedef struct Options {
   unsigned beam_size; // 0
 	std::string transition_system; // "list"
   std::string dynet_seed;
+  std::string dynet_mem;
 	bool USE_POS; // true
   bool USE_BILSTM; // true
   bool USE_TREELSTM; // true
