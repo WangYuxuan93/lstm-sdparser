@@ -1923,8 +1923,12 @@ void LSTMParser::predict_dev() {
 
       {
       ComputationGraph cg;
-      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+      if (Opt.beam_size == 0)
+          pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
                               corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
+      else
+          pred = log_prob_parser_beam(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                                    corpus.actions, corpus.intToWords, &right, Opt.beam_size, dg);
       }
       /*cerr << cand.size() << endl;
       for (unsigned i = 0; i < cand.size(); ++i){
@@ -2026,8 +2030,13 @@ void LSTMParser::predict(std::vector<std::vector<string>> &hyp, const std::vecto
       double right = 0;
       {
       ComputationGraph cg;
-      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
-                             corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
+      if (Opt.beam_size == 0)
+          pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                              corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
+      else
+          pred = log_prob_parser_beam(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                                    corpus.actions, corpus.intToWords, &right, Opt.beam_size, dg);
+
       }
       hyp = compute_heads(sentence, pred);
       //cerr << "hyp length: " << hyp.size() << " " << hyp[0].size() << endl;
