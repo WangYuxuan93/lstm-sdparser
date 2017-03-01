@@ -81,6 +81,8 @@ int main(int argc, char** argv) {
     cerr << "Using treelstm for subtree in stack." << endl;
   if (Opt.beam_size > 0)
     cerr << "Using beam search, beam size: " << Opt.beam_size << endl;
+  if (Opt.GLOBAL_LOSS)
+    cerr << "Using global loss function." << endl;
 
   Opt.transition_system = conf["transition_system"].as<string>();
   cerr << "Transition System: " << Opt.transition_system << endl;
@@ -114,6 +116,7 @@ int main(int argc, char** argv) {
   assert(unk_prob >= 0.); assert(unk_prob <= 1.);
   ostringstream os;
   os << "parser_" << Opt.transition_system
+    << '_' << (Opt.GLOBAL_LOSS ? "glb" : "loc")
     << '_' << (Opt.USE_POS ? "pos" : "nopos")
     << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
     << '_' << (Opt.USE_TREELSTM ? "tr" : "notr")
