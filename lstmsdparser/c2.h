@@ -21,7 +21,8 @@ class Corpus {
 // typedef std::unordered_map<unsigned,std::string, std::hash<std::string> > ReverseMap;
 public: 
    bool DEBUG = false;
-   bool USE_SPELLING=false; 
+   bool USE_SPELLING=false;
+   std::string transition_system; 
 
    std::map<int,std::vector<unsigned>> correct_act_sent;
    std::map<int,std::vector<unsigned>> sentences;
@@ -85,7 +86,9 @@ inline unsigned UTF8Len(unsigned char x) {
 }
 
 
-
+void set_transition_system(std::string system){
+  transition_system = system;
+}
 
 inline void load_correct_actions(std::string file){
 	
@@ -142,7 +145,10 @@ inline void load_correct_actions(std::string file){
         // the initial line in each sentence may look like:
         // [][][the-det, cat-noun, is-verb, on-adp, the-det, mat-noun, ,-punct, ROOT-ROOT]
         // first, get rid of the square brackets.
-        lineS = lineS.substr(5, lineS.size() - 6); // 5, 6 for list-based , 3, 4 for std
+        if (transition_system == "arcstd")
+          lineS = lineS.substr(3, lineS.size() - 4); // 5, 6 for list-based , 3, 4 for arcstd
+        else
+          lineS = lineS.substr(5, lineS.size() - 6);
         // read the initial line, token by token "the-det," "cat-noun," ...
         std::istringstream iss(lineS);
         do {
@@ -309,7 +315,10 @@ inline void load_correct_actionsDev(std::string file) {
         // the initial line in each sentence may look like:
         // [][the-det, cat-noun, is-verb, on-adp, the-det, mat-noun, ,-punct, ROOT-ROOT]
         // first, get rid of the square brackets.
-        lineS = lineS.substr(5, lineS.size() - 6);
+        if (transition_system == "arcstd")
+          lineS = lineS.substr(3, lineS.size() - 4); // 5, 6 for list-based , 3, 4 for arcstd
+        else
+          lineS = lineS.substr(5, lineS.size() - 6);
         // read the initial line, token by token "the-det," "cat-noun," ...
         std::istringstream iss(lineS);
         do {

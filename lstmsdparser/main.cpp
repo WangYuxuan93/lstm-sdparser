@@ -22,7 +22,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("training_data,T", po::value<string>(), "List of Transitions - Training corpus")
         ("dev_data,d", po::value<string>(), "Development corpus")
         ("test_data,p", po::value<string>(), "Test corpus")
-        ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(list - listbased, tree - tree listbased)")
+        ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(arcstd - arcstandard, list - listbased, tree - tree listbased)")
         ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
         ("dynet_seed", po::value<string>(), "Dynet seed for initialization")
         ("dynet_mem", po::value<string>()->default_value("4000"), "Dynet memory size (MB) for initialization")
@@ -33,6 +33,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("use_bilstm,B", "use bilstm for buffer")
         ("use_treelstm,R", "use treelstm for subtree in stack")
         ("beam_size,b", po::value<unsigned>()->default_value(0), "beam size")
+        ("global_loss,G", "train using the global loss function (Andor et al)")
         ("layers", po::value<unsigned>()->default_value(2), "number of LSTM layers")
         ("action_dim", po::value<unsigned>()->default_value(50), "action embedding size")
         ("input_dim", po::value<unsigned>()->default_value(100), "input embedding size")
@@ -72,6 +73,7 @@ int main(int argc, char** argv) {
   Opt.USE_POS = conf.count("use_pos_tags");
   Opt.USE_BILSTM = conf.count("use_bilstm");
   Opt.USE_TREELSTM = conf.count("use_treelstm");
+  Opt.GLOBAL_LOSS = conf.count("global_loss");
   Opt.beam_size = conf["beam_size"].as<unsigned>();
   if (Opt.USE_BILSTM)
     cerr << "Using bilstm for buffer." << endl;

@@ -18,8 +18,8 @@ std::string StrToLower(const std::string s){
 
 //struct LSTMParser {
 
-LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 0, 
-                               "list", "", "4000", true, false, false}) {}
+LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 0, "list", 
+                                "", "4000", true, false, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -30,6 +30,7 @@ void LSTMParser::set_options(Options opts){
 bool LSTMParser::load(string model_file, string training_data_file, string word_embedding_file,
                         string dev_data_file){
   this->transition_system = Opt.transition_system;
+  corpus.set_transition_system(Opt.transition_system);
   if (DEBUG)
     cerr << "Loading training data from " << training_data_file << endl;
   corpus.load_correct_actions(training_data_file);
@@ -291,6 +292,28 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
     return false;
 }
 
+bool LSTMParser::IsActionForbidden2(const string& a, unsigned bsize, unsigned ssize, vector<int> stacki) 
+{
+    if (a[1]=='W' && ssize<3) return true; //MIGUEL
+
+    if (a[1]=='W') { //MIGUEL
+        int top=stacki[stacki.size()-1];
+        int sec=stacki[stacki.size()-2];
+        if (sec>top) return true;
+    }
+
+    bool is_shift = (a[0] == 'S' && a[1]=='H');  //MIGUEL
+    bool is_reduce = !is_shift;
+    if (is_shift && bsize == 1) return true;
+    if (is_reduce && ssize < 3) return true;
+    if (bsize == 2 && // ROOT is the only thing remaining on buffer
+        ssize > 2 && // there is more than a single element on the stack
+        is_shift) return true;
+    // only attach left to ROOT
+    if (bsize == 1 && ssize == 3 && a[0] == 'R') return true;
+    return false;
+}
+
 vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, const vector<unsigned>& actions) {
   //map<int,int> heads;
   //map<int,string> r;
@@ -379,45 +402,37 @@ vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, c
                 }
             }
         }
-        else if (transition_system == "spl"){
-            //TODO
-            if (ac =='N' && ac2=='S') {  // NO-SHIFT
+        else if (transition_system == "arcstd"){
+            if (ac =='S' && ac2=='H') {  // SHIFT
                 assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
-                int passi_size = (int)passi.size();
-                for (int i = 1; i < passi_size; i++){  //do not move pass_guard
-                    stacki.push_back(passi.back());
-                    passi.pop_back();
-                }
                 stacki.push_back(bufferi.back());
                 bufferi.pop_back();
-            } else if (ac=='N' && ac2=='P'){
-                assert(stacki.size() > 1);
-                passi.push_back(stacki.back());
+            } 
+            else if (ac=='S' && ac2=='W') {
+                assert(stacki.size() > 2);
+                unsigned ii = 0, jj = 0;
+                jj=stacki.back();
                 stacki.pop_back();
-            } else if (ac=='L'){ // LEFT-ARC or LEFT-POP
-                assert(stacki.size() > 1 && bufferi.size() > 1);
-                unsigned depi, headi;
-                depi = stacki.back();
+                ii=stacki.back();
                 stacki.pop_back();
-                headi = bufferi.back();
-                graph[headi][depi] = actionString.substr(3, actionString.size() - 4);
-                if (ac2 == 'A'){ // LEFT-ARC
-                    //TODO pass_lstm
-                    passi.push_back(depi);
-                }
-            } else if (ac=='R'){ // RIGHT-ARC
-                assert(stacki.size() > 1 && bufferi.size() > 1);
-                unsigned depi, headi;
-                depi = bufferi.back();
-                bufferi.pop_back();
-                headi = stacki.back();
+                bufferi.push_back(ii);
+                stacki.push_back(jj);
+            }
+            else { // LEFT or RIGHT
+                assert(stacki.size() > 2); // dummy symbol means > 2 (not >= 2)
+                assert(ac == 'L' || ac == 'R');
+                unsigned depi = 0, headi = 0;
+                (ac == 'R' ? depi : headi) = stacki.back();
                 stacki.pop_back();
-                graph[headi][depi] = actionString.substr(3, actionString.size() - 4);
-                passi.push_back(headi);
-                bufferi.push_back(depi);
+                (ac == 'R' ? headi : depi) = stacki.back();
+                stacki.pop_back();
+                stacki.push_back(headi);
+                int offset = (ac == 'R' ? 10 : 9);
+                graph[headi][depi] = actionString.substr(offset, actionString.size() - offset - 1);
+                cerr << graph[headi][depi] << endl;
             }
         }
-  }
+    }
   assert(bufferi.size() == 1);
   //assert(stacki.size() == 2);
   return graph;
@@ -1198,6 +1213,10 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
                     // action_log_prob = pick(adist, action)
                     ns->log_probs.push_back(st.action.log_prob);
+                    if (Opt.GLOBAL_LOSS) {
+                        ns->log_zlocals.push_back(st.action.log_zlocal);
+                        ns->rhos.push_back(st.action.rho);
+                    }
                     // do action
                     apply_action_to_state(hg, ns, st.action.val,
                                           setOfActions, sent, intToWords,
@@ -1224,6 +1243,10 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                         gold_parse->score += gold_action.score;
                         // action_log_prob = pick(adist, action)
                         gold_parse->log_probs.push_back(gold_action.log_prob);
+                        if (Opt.GLOBAL_LOSS) {
+                            gold_parse->log_zlocals.push_back(gold_action.log_zlocal);
+                            gold_parse->rhos.push_back(gold_action.rho);
+                        }
 
                         // is this necessary?
                         apply_action_to_state(hg, gold_parse, gold_action.val,
@@ -1288,6 +1311,10 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
             bufferi = gold_parse->bufferi;
             results = gold_parse->results;
             log_probs = gold_parse->log_probs;
+            if (Opt.GLOBAL_LOSS) {
+                log_zlocals = gold_parse->log_zlocals;
+                rhos = gold_parse->rhos;
+            }
             // Count how many actions we got right
             assert(results.size() <= correct_actions.size());
             for (unsigned i = 0; i < results.size(); i++) {
@@ -1305,6 +1332,10 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
             bufferi = completed.front()->bufferi;
             results = completed.front()->results;
             log_probs = completed.front()->log_probs;
+            if (Opt.GLOBAL_LOSS) {
+                log_zlocals = completed.front()->log_zlocals;
+                rhos = completed.front()->rhos;
+            }
 
             assert(stack.size() == 2); // guard symbol, root
             assert(stacki.size() == 2);
@@ -1315,7 +1346,72 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         }
 
         Expression intermediate_loss;
-        intermediate_loss = -sum(log_probs);
+        if (Opt.GLOBAL_LOSS && build_training_graph) {
+            // Global loss from Andor et al. 2016
+            // NOTE - this did not end up working
+            vector<Expression> beam_sum_rhos;
+            //vector<Expression> beam_exp_sum_log_probs;
+            //vector<Expression> beam_sum_log_probs; // sum(beam_sum_log_pLI) = log(pL)
+            //vector<Expression> beam_sum_log_probs2; // sum(beam_sum_log_pLI) = log(pL)
+
+            if (completed.size() < beam_size) { // Bj, all ongoing beams and the gold beam
+                for (ParserState *ps : ongoing) { beam_sum_rhos.push_back(sum(ps->rhos)); }
+                beam_sum_rhos.push_back(sum(rhos)); // gold beam
+
+                /*for (ParserState *ps : ongoing) { beam_exp_sum_log_probs.push_back(exp(sum(ps->log_probs))); }
+                beam_exp_sum_log_probs.push_back(exp(sum(log_probs))); // gold beam
+    
+                for (ParserState *ps : ongoing) { beam_sum_log_probs.push_back(sum(ps->log_probs)); }
+                beam_sum_log_probs.push_back(sum(log_probs)); // gold beam
+
+                for (ParserState *ps : ongoing) {
+                    vector<Expression> log_pLIs;
+                    for (unsigned act_i = 0; act_i < ps->rhos.size(); act_i++) {
+                        log_pLIs.push_back(ps->rhos[act_i] - ps->log_zlocals[act_i]);
+                    }
+                    beam_sum_log_probs2.push_back(sum(log_pLIs));
+                }
+                vector<Expression> log_pLIs;
+                for (unsigned act_i = 0; act_i < rhos.size(); act_i++) {
+                     log_pLIs.push_back(rhos[act_i] - log_zlocals[act_i]);
+                }
+                beam_sum_log_probs2.push_back(sum(log_pLIs)); // gold beam */
+            } else { // Bn, set of completed beams
+                assert(completed.size() == beam_size);
+                for (ParserState* ps : completed) { beam_sum_rhos.push_back(sum(ps->rhos)); }
+                /*for (ParserState* ps : completed) { beam_exp_sum_log_probs.push_back(exp(sum(ps->log_probs))); }
+                for (ParserState* ps : completed) { beam_sum_log_probs.push_back(sum(ps->log_probs)); }
+                for (ParserState* ps : completed) {
+                    vector<Expression> log_pLIs;
+                    for (unsigned act_i = 0; act_i < ps->rhos.size(); act_i++) {
+                        log_pLIs.push_back(ps->rhos[act_i] - ps->log_zlocals[act_i]);
+                    }
+                    beam_sum_log_probs2.push_back(sum(log_pLIs));
+                }*/
+            }
+
+//            cerr << "rhos:       \t"; for (Expression rho : rhos) { cerr << rho.value() << "\t";}  cerr << "\n";
+//            cerr << "beam zg:    \t"; for (Expression beam_zglobal : beam_zglobals) { cerr << beam_zglobal.value() << "\n\t\t";}  cerr << "\n";
+//
+//            cerr << "-sum(rhos) ?= -sum(log_probs) - sum(log_zlocals): \n";
+//            cerr << (-sum(rhos)).value() << " ?= " << (-sum(log_probs)-sum(log_zlocals)).value() << " (" << (-sum(log_probs)).value() << " + " << (-sum(log_zlocals)).value() << ")\n";
+//
+//            cerr << (-sum(rhos)).value() <<  " + " << logsumexp(beam_zglobals).value() << "\n";
+
+            cerr << std::setprecision(10);
+
+            /*vector<Expression> log_pLIs;            
+            vector<Expression> lil_rhos;
+            vector<Expression> lil_bslp;
+            for (unsigned act_i = 0; act_i < rhos.size(); act_i++) {
+                log_pLIs.push_back(rhos[act_i] - log_zlocals[act_i]);
+            }*/
+            intermediate_loss = -sum(rhos) + logsumexp(beam_sum_rhos);
+
+      
+        } else {
+            intermediate_loss = -sum(log_probs);
+        }
 
         // prevents memory leaks
         ongoing.clear();
@@ -1382,15 +1478,27 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     vector<float> adist = as_vector(hg->incremental_forward(adiste));
 
     Expression log_zlocal;
+    if (Opt.GLOBAL_LOSS) { // not used in experiments
+        vector<Expression> intermediate;
+        for (unsigned valid_action_loc : current_valid_actions) { intermediate.push_back(pick(r_t, valid_action_loc)); }
+        log_zlocal = logsumexp(intermediate);
+    }
     for (unsigned i = 0; i < current_valid_actions.size(); ++i) {
         // For each action, its value is equal to the current state's value, plus the value of the action
         double total_score = cur->score + adist[current_valid_actions[i]];
-
+        if (Opt.GLOBAL_LOSS) {
+            total_score = cur->score + *(pick(r_t, current_valid_actions[i]).value().v);
+        }
         //cerr << "filling\n";
         Action act;
         act.score = adist[current_valid_actions[i]];
         act.val = current_valid_actions[i];
         act.log_prob = pick(adiste, act.val);
+        if (Opt.GLOBAL_LOSS) {
+            act.log_zlocal = log_zlocal;
+            act.rho = pick(r_t, act.val);
+            act.score = *(act.rho.value().v);
+        }
         StepSelect next_step;
         next_step.source = cur;
         next_step.action = act;
@@ -1402,6 +1510,11 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
             gold_act.score = adist[correct_actions[action_count]];
             gold_act.val = correct_actions[action_count];
             gold_act.log_prob = pick(adiste, gold_act.val);
+            if (Opt.GLOBAL_LOSS) {
+                gold_act.log_zlocal = log_zlocal;
+                gold_act.rho = pick(r_t, gold_act.val);
+                gold_act.score = *(gold_act.rho.value().v);
+            }
             gold_parse = cur;
             gold_parse->next_gold_action = gold_act;
         }

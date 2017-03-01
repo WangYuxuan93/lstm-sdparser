@@ -69,8 +69,9 @@ typedef struct Options {
   std::string dynet_seed;
   std::string dynet_mem;
 	bool USE_POS; // true
-  bool USE_BILSTM; // true
-  bool USE_TREELSTM; // true
+  bool USE_BILSTM; // false
+  bool USE_TREELSTM; // false
+  bool GLOBAL_LOSS; // false
 }Options;
 
 struct DataGatherer {
@@ -269,28 +270,7 @@ public:
                      std::vector<Expression>* word_rep = NULL,
                      Expression * act_rep = NULL);
 
-  bool IsActionForbidden2(const string& a, unsigned bsize, unsigned ssize, vector<int> stacki) {
-  if (a[1]=='W' && ssize<3) return true; //MIGUEL
-
-  if (a[1]=='W') { //MIGUEL
-
-        int top=stacki[stacki.size()-1];
-        int sec=stacki[stacki.size()-2];
-
-        if (sec>top) return true;
-  }
-
-  bool is_shift = (a[0] == 'S' && a[1]=='H');  //MIGUEL
-  bool is_reduce = !is_shift;
-  if (is_shift && bsize == 1) return true;
-  if (is_reduce && ssize < 3) return true;
-  if (bsize == 2 && // ROOT is the only thing remaining on buffer
-      ssize > 2 && // there is more than a single element on the stack
-      is_shift) return true;
-  // only attach left to ROOT
-  if (bsize == 1 && ssize == 3 && a[0] == 'R') return true;
-  return false;
-  }
+  bool IsActionForbidden2(const string& a, unsigned bsize, unsigned ssize, vector<int> stacki);
 
   void getNextBeams(ParserState* cur, vector<StepSelect>* potential_next_beams,
                           ComputationGraph* hg, const getNextBeamsArgs& args,
