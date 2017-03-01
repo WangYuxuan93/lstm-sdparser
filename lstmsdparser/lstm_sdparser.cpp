@@ -429,7 +429,7 @@ vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, c
                 stacki.push_back(headi);
                 int offset = (ac == 'R' ? 10 : 9);
                 graph[headi][depi] = actionString.substr(offset, actionString.size() - offset - 1);
-                cerr << graph[headi][depi] << endl;
+                //cerr << graph[headi][depi] << endl;
             }
         }
     }
