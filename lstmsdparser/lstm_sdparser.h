@@ -101,11 +101,13 @@ struct ParserState {
   LSTMBuilder stack_lstm;
   LSTMBuilder buffer_lstm;
   LSTMBuilder action_lstm;
+  TheirTreeLSTMBuilder tree_lstm;
   vector<Expression> buffer;
   vector<int> bufferi;
   vector<Expression> stack;
   vector<int> stacki;
   vector<unsigned> results;  // sequence of predicted actions
+  vector<vector<bool>> graph; // directed graph for sub-graph
   bool complete;
 
   bool gold = true;
@@ -149,9 +151,13 @@ struct getNextBeamsArgs {
     const Expression& S;
     const Expression& B;
     const Expression& A;
+    const Expression& fwB;
+    const Expression& bwB;
     const bool& build_training_graph;
     const vector<unsigned>& correct_actions;
     const int& action_count;
+    const int& idx; // sent.size() - bufferi.back()
+    const std::vector<BidirectionalLSTMLayer::Output>& bilstm_outputs;
 };
 
 static volatile bool requested_stop;
@@ -237,7 +243,8 @@ public:
                              const Expression& H,
                              const Expression& D,
                              const Expression& R,
-                             string* rootword);
+                             string* rootword,
+                             const vector<Expression>& word_emb);
 
   void apply_action( ComputationGraph* hg,
                    LSTMBuilder& stack_lstm,

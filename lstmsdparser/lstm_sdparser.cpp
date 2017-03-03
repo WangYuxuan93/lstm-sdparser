@@ -893,14 +893,15 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                              const Expression& H,
                              const Expression& D,
                              const Expression& R,
-                             string* rootword) {
-    apply_action(hg,
-                 ns->stack_lstm, ns->buffer_lstm, ns->action_lstm,
+                             string* rootword,
+                             const vector<Expression>& word_emb) {
+    apply_action2(hg,
+                 ns->stack_lstm, ns->buffer_lstm, ns->action_lstm, ns->tree_lstm,
                  ns->buffer, ns->bufferi, ns->stack, ns->stacki, ns->results,
                  action, setOfActions,
                  sent, intToWords,
                  cbias, H, D, R,
-                 rootword);
+                 rootword, ns->graph, word_emb);
   }
 
   // Applies an action (shift, reduce, etc) to a stack, buffer, and LSTM set
@@ -1154,11 +1155,27 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         const bool build_training_graph = correct_actions.size() > 0;
 
         stack_lstm.new_graph(*hg);
-        buffer_lstm.new_graph(*hg);
-        action_lstm.new_graph(*hg);
         stack_lstm.start_new_sequence();
-        buffer_lstm.start_new_sequence();
+        //buffer_lstm.new_graph(*hg);
+        //buffer_lstm.start_new_sequence();
+        action_lstm.new_graph(*hg);
         action_lstm.start_new_sequence();
+
+        Expression fwB;
+        Expression bwB;
+        if (Opt.USE_BILSTM){
+            buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
+            fwB = parameter(*hg, p_fwB); // [bilstm]
+            bwB = parameter(*hg, p_bwB); // [bilstm]
+        }else{
+            buffer_lstm.new_graph(*hg);
+            buffer_lstm.start_new_sequence();
+        }
+        if (Opt.USE_TREELSTM){
+            tree_lstm.new_graph(*hg); // [treelstm]
+            tree_lstm.start_new_sequence(); // [treelstm]
+            tree_lstm.initialize_structure(sent.size()); // [treelstm]
+        }
         // variables in the computation graph representing the parameters
         Expression pbias = parameter(*hg, p_pbias);
         Expression H = parameter(*hg, p_H);
@@ -1181,10 +1198,10 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         Expression action_start = parameter(*hg, p_action_start);
 
         action_lstm.add_input(action_start);
-
         vector<Expression> buffer(sent.size() + 1);  // variables representing word embeddings (possibly including POS info)
         vector<int> bufferi(sent.size() + 1);  // position of the words in the sentence
         // precompute buffer representation from left to right
+        vector<Expression> word_emb(sent.size()); // [treelstm] store original word representation emb[i] for sent[i]
 
         for (unsigned i = 0; i < sent.size(); ++i) {
             assert(sent[i] < System_size.VOCAB_SIZE);
@@ -1203,13 +1220,26 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
             }
             buffer[sent.size() - i] = rectify(i_i);
             bufferi[sent.size() - i] = i;
+            if (Opt.USE_TREELSTM)
+                word_emb[i] = buffer[sent.size() - i];
+        }
+        if (Opt.USE_TREELSTM){
+            vector<unsigned> h;
+            for (int i = 0; i < sent.size(); i++)
+                tree_lstm.add_input(i, h, word_emb[i]);
         }
 
         // dummy symbol to represent the empty buffer
         buffer[0] = parameter(*hg, p_buffer_guard);
         bufferi[0] = -999;
-        for (auto& b : buffer)
-            buffer_lstm.add_input(b);
+        std::vector<BidirectionalLSTMLayer::Output> bilstm_outputs;
+        if (Opt.USE_BILSTM){
+            buffer_bilstm.add_inputs(hg, buffer); 
+            buffer_bilstm.get_outputs(hg, bilstm_outputs); // [bilstm] output of bilstm for buffer, first is fw, second is bw
+        }else{
+            for (auto& b : buffer)
+                buffer_lstm.add_input(b);
+        }
 
         vector<Expression> stack;  // variables representing subtree embeddings
         vector<int> stacki; // position of words in the sentence of head of subtree
@@ -1229,9 +1259,16 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
         // initialize structures for beam search
         ParserState* init = new ParserState(); newcount ++;
+
+        vector<bool> v;
+        for (int i = 0; i < (int)sent.size(); ++i)
+            v.push_back(false);
+        for (int i = 0; i < (int)sent.size(); ++i)
+            init->graph.push_back(v);
         init->stack_lstm = stack_lstm;
         init->buffer_lstm = buffer_lstm;
         init->action_lstm = action_lstm;
+        init->tree_lstm = tree_lstm;
         init->buffer = buffer;
         init->bufferi = bufferi;
         init->stack = stack;
@@ -1294,7 +1331,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                     // do action
                     apply_action_to_state(hg, ns, st.action.val,
                                           setOfActions, sent, intToWords,
-                                          cbias, H, D, R, &rootword);
+                                          cbias, H, D, R, &rootword, word_emb);
                     ongoing.push_back(ns);
                 }
                 next_beams.clear();
@@ -1325,7 +1362,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                         // is this necessary?
                         apply_action_to_state(hg, gold_parse, gold_action.val,
                                               setOfActions, sent, intToWords,
-                                              cbias, H, D, R, &rootword);
+                                              cbias, H, D, R, &rootword, word_emb);
                         break;
                     }
                 }
@@ -1358,7 +1395,13 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 // Since we have now confirmed that the beam is not complete, we want to generate all possible actions to
                 // take from here, and keep the best states for the next beam set
                 dg.decisions_made++;
-                getNextBeamsArgs nba{setOfActions,p2a,pbias,abias,S,B,A,build_training_graph,correct_actions,action_count};
+                int idx;
+                if (cur->bufferi.size() > 1)
+                    idx = sent.size() - cur->bufferi.back();
+                else
+                    idx = 0;
+                getNextBeamsArgs nba{setOfActions,p2a,pbias,abias,S,B,A,fwB,bwB,build_training_graph,
+                                      correct_actions,action_count,idx,bilstm_outputs};
                 vector<StepSelect> potential_next_beams;
                 getNextBeams(cur, &potential_next_beams,
                                  hg,
@@ -1522,7 +1565,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
   void LSTMParser::getNextBeams(ParserState* cur, vector<StepSelect>* potential_next_beams,
                           ComputationGraph* hg, const getNextBeamsArgs& args,
                           ParserState*& gold_parse){
-
+    const std::vector<BidirectionalLSTMLayer::Output>& bilstm_outputs = args.bilstm_outputs;
     const vector<string>& setOfActions = args.setOfActions;
     const Expression& p2a = args.p2a;
     const Expression& pbias = args.pbias;
@@ -1530,9 +1573,12 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     const Expression& S = args.S;
     const Expression& B = args.B;
     const Expression& A = args.A;
+    const Expression& fwB = args.fwB;
+    const Expression& bwB = args.bwB;
     const bool& build_training_graph = args.build_training_graph;
     const vector<unsigned>& correct_actions = args.correct_actions;
     const int& action_count = args.action_count;
+    const int& idx = args.idx;
 
     // get list of possible actions for the current parser state
     vector<unsigned> current_valid_actions;
@@ -1543,7 +1589,22 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     }
 
     // p_t = pbias + S * slstm + B * blstm + A * almst
-    Expression p_t = affine_transform({pbias, S, cur->stack_lstm.back(), B, cur->buffer_lstm.back(), A, cur->action_lstm.back()});
+    //Expression p_t = affine_transform({pbias, S, cur->stack_lstm.back(), B, cur->buffer_lstm.back(), A, cur->action_lstm.back()});
+    
+    Expression p_t;
+    if (Opt.USE_BILSTM){
+        //cerr << "bilstm: " << bilstm_outputs.size() << " id: " 
+        //<< sent.size() - bufferi.back() << " bufferi: " << bufferi.back() << endl;
+        Expression fwbuf,bwbuf;
+        fwbuf = bilstm_outputs[idx].first - bilstm_outputs[1].first;
+        bwbuf = bilstm_outputs[1].second - bilstm_outputs[idx].second;
+        // [bilstm] p_t = pbias + S * slstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
+        p_t = affine_transform({pbias, S, stack_lstm.back(), fwB, fwbuf, bwB, bwbuf, 
+                                A, action_lstm.back()});
+    }else{
+        p_t = affine_transform({pbias, S, stack_lstm.back(), B, buffer_lstm.back(), 
+                                A, action_lstm.back()});
+    }
     Expression nlp_t = rectify(p_t);
     // r_t = abias + p2a * nlp
     Expression r_t = affine_transform({abias, p2a, nlp_t});
