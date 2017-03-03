@@ -306,7 +306,7 @@ inline void load_correct_actionsDev(std::string file) {
       initial = true;
       current_sent.clear();
       current_sent_pos.clear();
-      current_sent_str.clear();
+      current_sent_str.clear(); 
     } else if (count == 0) {
       first = false;
       //stack and buffer, for now, leave it like this.
@@ -320,8 +320,8 @@ inline void load_correct_actionsDev(std::string file) {
         else
           lineS = lineS.substr(5, lineS.size() - 6);
         // read the initial line, token by token "the-det," "cat-noun," ...
-        std::istringstream iss(lineS);
-        do {
+        std::istringstream iss(lineS);  
+	do {
           std::string word;
           iss >> word;
           if (word.size() == 0) { continue; }
