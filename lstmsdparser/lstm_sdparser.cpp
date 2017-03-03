@@ -293,8 +293,8 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
 }
 
 bool LSTMParser::IsActionForbidden2(const string& a, unsigned bsize, unsigned ssize, vector<int> stacki) 
-{
-    if (a[1]=='W' && ssize<3) return true; //MIGUEL
+{ 
+    if (a[1]=='W' && ssize<=3) return true; //MIGUEL
 
     if (a[1]=='W') { //MIGUEL
         int top=stacki[stacki.size()-1];
@@ -310,7 +310,13 @@ bool LSTMParser::IsActionForbidden2(const string& a, unsigned bsize, unsigned ss
         ssize > 2 && // there is more than a single element on the stack
         is_shift) return true;
     // only attach left to ROOT
-    if (bsize == 1 && ssize == 3 && a[0] == 'R') return true;
+    //if (bsize == 1 && ssize == 3 && a[0] == 'R') return true;
+    if (a[0] == 'L' || a[0] == 'R'){
+        string rel = (a[0] == 'L') ? a.substr(9, a.size() - 10) : a.substr(10, a.size() - 11);
+        rel = StrToLower(rel);
+	if (bsize == 1 && ssize == 3 && a[0] == 'R' && rel != "root") return true;
+	if (bsize == 1 && ssize == 3 && a[0] == 'L' && rel != "root") return true; 
+    }
     return false;
 }
 
@@ -318,7 +324,6 @@ vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, c
   //map<int,int> heads;
   //map<int,string> r;
   //map<int,string>& rels = (pr ? *pr : r);
-
     const vector<string>& setOfActions = corpus.actions;
     unsigned sent_len = sent.size();
     vector<vector<string>> graph;
@@ -337,7 +342,7 @@ vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, c
         const char ac = actionString[0];
         const char ac2 = actionString[1];
 
-      /*  cerr <<endl<<"[";
+      /*cerr <<endl<<"[";
       for (int i = (int)stacki.size() - 1; i > -1 ; --i)
         cerr << corpus.intToWords[sent[stacki[i]]] <<"-"<<stacki[i]<<", ";
       cerr <<"][";
