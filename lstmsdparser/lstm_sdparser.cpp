@@ -1993,6 +1993,7 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
     unsigned si = corpus.nsentences;
     cerr << "NUMBER OF TRAINING SENTENCES: " << corpus.nsentences << endl;
     unsigned trs = 0;
+    unsigned prd = 0; // number of predicted actions (in case of early update)
     double right = 0;
     double llh = 0;
     bool first = true;
@@ -2024,10 +2025,10 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
           //cerr << "Start word:" << corpus.intToWords[sentence[0]]<<corpus.intToWords[sentence[1]] << endl;
           std::vector<std::vector<string>> cand;
           if (Opt.beam_size == 0)
-            log_prob_parser(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
+              log_prob_parser(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
                               corpus.intToWords, &right, cand);
           else
-            log_prob_parser_beam(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
+              log_prob_parser_beam(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
                                     corpus.intToWords, &right, Opt.beam_size, dg);
           double lp = as_scalar(hg.incremental_forward((VariableIndex)(hg.nodes.size() - 1)));
           if (lp < 0) {
@@ -2044,7 +2045,9 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
       //time_t time_now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
       time_t time_now = time(NULL);
       std::string t_n(asctime(localtime(&time_now))); 
-      cerr << "update #" << iter << " (epoch " << (tot_seen / corpus.nsentences) << " |time=" << t_n.substr(0, t_n.size() - 1) << ")\tllh: "<< llh<<" ppl: " << exp(llh / trs) << " err: " << (trs - right) / trs << endl;
+      cerr << "update #" << iter << " (epoch " << (tot_seen / corpus.nsentences) 
+      << " |time=" << t_n.substr(0, t_n.size() - 1) << ")\tllh: "<< llh<<" ppl: " << exp(llh / trs) 
+      << " err: " << (trs - right) / trs << endl;
       llh = trs = right = 0;
 
       static int logc = 0;
