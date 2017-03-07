@@ -156,7 +156,7 @@ struct getNextBeamsArgs {
     const bool& build_training_graph;
     const vector<unsigned>& correct_actions;
     const int& action_count;
-    const int& idx; // sent.size() - bufferi.back()
+    //const int& idx; // sent.size() - bufferi.back()
     const std::vector<BidirectionalLSTMLayer::Output>& bilstm_outputs;
 };
 
@@ -250,25 +250,6 @@ public:
                    LSTMBuilder& stack_lstm,
                    LSTMBuilder& buffer_lstm,
                    LSTMBuilder& action_lstm,
-                   vector<Expression>& buffer,
-                   vector<int>& bufferi,
-                   vector<Expression>& stack,
-                   vector<int>& stacki,
-                   vector<unsigned>& results,
-                   unsigned action,
-                   const vector<string>& setOfActions,
-                   const vector<unsigned>& sent,  // sent with oovs replaced
-                   const map<unsigned, std::string>& intToWords,
-                   const Expression& cbias,
-                   const Expression& H,
-                   const Expression& D,
-                   const Expression& R,
-                   string* rootword);
-
-  void apply_action2( ComputationGraph* hg,
-                   LSTMBuilder& stack_lstm,
-                   LSTMBuilder& buffer_lstm,
-                   LSTMBuilder& action_lstm,
                    TheirTreeLSTMBuilder& tree_lstm,
                    vector<Expression>& buffer,
                    vector<int>& bufferi,
@@ -287,6 +268,26 @@ public:
                    vector<vector<bool>>& graph,
                    const vector<Expression>& word_emb);
 
+  //without [treelstm]
+  /*void apply_action2( ComputationGraph* hg,
+                   LSTMBuilder& stack_lstm,
+                   LSTMBuilder& buffer_lstm,
+                   LSTMBuilder& action_lstm,
+                   vector<Expression>& buffer,
+                   vector<int>& bufferi,
+                   vector<Expression>& stack,
+                   vector<int>& stacki,
+                   vector<unsigned>& results,
+                   unsigned action,
+                   const vector<string>& setOfActions,
+                   const vector<unsigned>& sent,  // sent with oovs replaced
+                   const map<unsigned, std::string>& intToWords,
+                   const Expression& cbias,
+                   const Expression& H,
+                   const Expression& D,
+                   const Expression& R,
+                   string* rootword);*/
+
   std::vector<unsigned> log_prob_parser(ComputationGraph* hg,
                      const std::vector<unsigned>& raw_sent,  // raw sentence
                      const std::vector<unsigned>& sent,  // sent with oovs replaced
@@ -304,6 +305,11 @@ public:
   void getNextBeams(ParserState* cur, vector<StepSelect>* potential_next_beams,
                           ComputationGraph* hg, const getNextBeamsArgs& args,
                           ParserState*& gold_parse);
+
+  //without [bilstm]
+  /*void getNextBeams2(ParserState* cur, vector<StepSelect>* potential_next_beams,
+                          ComputationGraph* hg, const getNextBeamsArgs& args,
+                          ParserState*& gold_parse);*/
 
   std::vector<unsigned> log_prob_parser_beam(ComputationGraph *hg, 
                       const vector<unsigned> &raw_sent,

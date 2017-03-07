@@ -711,7 +711,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       ++action_count;
       log_probs.push_back(pick(adiste, action));
       if (transition_system == "arcstd")
-        apply_action2(hg,
+        apply_action(hg,
                    stack_lstm, buffer_lstm, action_lstm, tree_lstm,
                    buffer, bufferi, stack, stacki, results,
                    action, setOfActions, sent, intToWords,
@@ -900,124 +900,23 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                              const Expression& R,
                              string* rootword,
                              const vector<Expression>& word_emb) {
-    apply_action2(hg,
+    apply_action(hg,
                  ns->stack_lstm, ns->buffer_lstm, ns->action_lstm, ns->tree_lstm,
                  ns->buffer, ns->bufferi, ns->stack, ns->stacki, ns->results,
                  action, setOfActions,
                  sent, intToWords,
                  cbias, H, D, R,
                  rootword, ns->graph, word_emb);
+    /*apply_action2(hg,
+                 ns->stack_lstm, ns->buffer_lstm, ns->action_lstm,
+                 ns->buffer, ns->bufferi, ns->stack, ns->stacki, ns->results,
+                 action, setOfActions,
+                 sent, intToWords,
+                 cbias, H, D, R,
+                 rootword);*/
   }
 
-  // Applies an action (shift, reduce, etc) to a stack, buffer, and LSTM set
   void LSTMParser::apply_action( ComputationGraph* hg,
-                   LSTMBuilder& stack_lstm,
-                   LSTMBuilder& buffer_lstm,
-                   LSTMBuilder& action_lstm,
-                   vector<Expression>& buffer,
-                   vector<int>& bufferi,
-                   vector<Expression>& stack,
-                   vector<int>& stacki,
-                   vector<unsigned>& results,
-                   unsigned action,
-                   const vector<string>& setOfActions,
-                   const vector<unsigned>& sent,  // sent with oovs replaced
-                   const map<unsigned, std::string>& intToWords,
-                   const Expression& cbias,
-                   const Expression& H,
-                   const Expression& D,
-                   const Expression& R,
-                   string* rootword) {
-
-    // add current action to results
-    //cerr << "add current action to results\n";
-    results.push_back(action);
-
-    // add current action to action LSTM
-    //cerr << "add current action to action LSTM\n";
-    Expression actione = lookup(*hg, p_a, action);
-    action_lstm.add_input(actione);
-
-    // get relation embedding from action (TODO: convert to relation from action?)
-    //cerr << "get relation embedding from action\n";
-    Expression relation = lookup(*hg, p_r, action);
-
-    const string &actionString = setOfActions[action];
-
-
-
-    const char ac = actionString[0];
-    const char ac2 = actionString[1];
-    // Execute one of the actions
-    if (ac == 'S' && ac2 == 'H') {  // SHIFT
-        assert(buffer.size() > 1); // dummy symbol means > 1 (not >= 1)
-        stack.push_back(buffer.back());
-        stack_lstm.add_input(buffer.back());
-        buffer.pop_back();
-        buffer_lstm.rewind_one_step();
-        stacki.push_back(bufferi.back());
-        bufferi.pop_back();
-    }
-    else if (ac == 'S' && ac2 == 'W') { //SWAP --- Miguel
-        assert(stack.size() > 2); // dummy symbol means > 2 (not >= 2)
-
-        //std::cout<<"SWAP: "<<"stack.size:"<<stack.size()<<"\n";
-
-        Expression toki, tokj;
-        unsigned ii = 0, jj = 0;
-        tokj = stack.back();
-        jj = stacki.back();
-        stack.pop_back();
-        stacki.pop_back();
-
-        toki = stack.back();
-        ii = stacki.back();
-        stack.pop_back();
-        stacki.pop_back();
-
-        buffer.push_back(toki);
-        bufferi.push_back(ii);
-
-        stack_lstm.rewind_one_step();
-        stack_lstm.rewind_one_step();
-
-
-        buffer_lstm.add_input(buffer.back());
-
-        stack.push_back(tokj);
-        stacki.push_back(jj);
-
-        stack_lstm.add_input(stack.back());
-
-        //stack_lstm.rewind_one_step();
-        //buffer_lstm.rewind_one_step();
-    }
-    else { // LEFT or RIGHT
-        assert(stack.size() > 2); // dummy symbol means > 2 (not >= 2)
-        assert(ac == 'L' || ac == 'R');
-        Expression dep, head;
-        unsigned depi = 0, headi = 0;
-        (ac == 'R' ? dep : head) = stack.back();
-        (ac == 'R' ? depi : headi) = stacki.back();
-        stack.pop_back();
-        stacki.pop_back();
-        (ac == 'R' ? head : dep) = stack.back();
-        (ac == 'R' ? headi : depi) = stacki.back();
-        stack.pop_back();
-        stacki.pop_back();
-        if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
-        // composed = cbias + H * head + D * dep + R * relation
-        Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
-        Expression nlcomposed = tanh(composed);
-        stack_lstm.rewind_one_step();
-        stack_lstm.rewind_one_step();
-        stack_lstm.add_input(nlcomposed);
-        stack.push_back(nlcomposed);
-        stacki.push_back(headi);
-    }
-}
-
-  void LSTMParser::apply_action2( ComputationGraph* hg,
                    LSTMBuilder& stack_lstm,
                    LSTMBuilder& buffer_lstm,
                    LSTMBuilder& action_lstm,
@@ -1135,8 +1034,117 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     }
   }
 
+  //without [treelstm]
+  // Applies an action (shift, reduce, etc) to a stack, buffer, and LSTM set
+  /*void LSTMParser::apply_action2( ComputationGraph* hg,
+                   LSTMBuilder& stack_lstm,
+                   LSTMBuilder& buffer_lstm,
+                   LSTMBuilder& action_lstm,
+                   vector<Expression>& buffer,
+                   vector<int>& bufferi,
+                   vector<Expression>& stack,
+                   vector<int>& stacki,
+                   vector<unsigned>& results,
+                   unsigned action,
+                   const vector<string>& setOfActions,
+                   const vector<unsigned>& sent,  // sent with oovs replaced
+                   const map<unsigned, std::string>& intToWords,
+                   const Expression& cbias,
+                   const Expression& H,
+                   const Expression& D,
+                   const Expression& R,
+                   string* rootword) {
+
+    // add current action to results
+    //cerr << "add current action to results\n";
+    results.push_back(action);
+
+    // add current action to action LSTM
+    //cerr << "add current action to action LSTM\n";
+    Expression actione = lookup(*hg, p_a, action);
+    action_lstm.add_input(actione);
+
+    // get relation embedding from action (TODO: convert to relation from action?)
+    //cerr << "get relation embedding from action\n";
+    Expression relation = lookup(*hg, p_r, action);
+
+    const string &actionString = setOfActions[action];
+
+
+
+    const char ac = actionString[0];
+    const char ac2 = actionString[1];
+    // Execute one of the actions
+    if (ac == 'S' && ac2 == 'H') {  // SHIFT
+        assert(buffer.size() > 1); // dummy symbol means > 1 (not >= 1)
+        stack.push_back(buffer.back());
+        stack_lstm.add_input(buffer.back());
+        buffer.pop_back();
+        buffer_lstm.rewind_one_step();
+        stacki.push_back(bufferi.back());
+        bufferi.pop_back();
+    }
+    else if (ac == 'S' && ac2 == 'W') { //SWAP --- Miguel
+        assert(stack.size() > 2); // dummy symbol means > 2 (not >= 2)
+
+        //std::cout<<"SWAP: "<<"stack.size:"<<stack.size()<<"\n";
+
+        Expression toki, tokj;
+        unsigned ii = 0, jj = 0;
+        tokj = stack.back();
+        jj = stacki.back();
+        stack.pop_back();
+        stacki.pop_back();
+
+        toki = stack.back();
+        ii = stacki.back();
+        stack.pop_back();
+        stacki.pop_back();
+
+        buffer.push_back(toki);
+        bufferi.push_back(ii);
+
+        stack_lstm.rewind_one_step();
+        stack_lstm.rewind_one_step();
+
+
+        buffer_lstm.add_input(buffer.back());
+
+        stack.push_back(tokj);
+        stacki.push_back(jj);
+
+        stack_lstm.add_input(stack.back());
+
+        //stack_lstm.rewind_one_step();
+        //buffer_lstm.rewind_one_step();
+    }
+    else { // LEFT or RIGHT
+        assert(stack.size() > 2); // dummy symbol means > 2 (not >= 2)
+        assert(ac == 'L' || ac == 'R');
+        Expression dep, head;
+        unsigned depi = 0, headi = 0;
+        (ac == 'R' ? dep : head) = stack.back();
+        (ac == 'R' ? depi : headi) = stacki.back();
+        stack.pop_back();
+        stacki.pop_back();
+        (ac == 'R' ? head : dep) = stack.back();
+        (ac == 'R' ? headi : depi) = stacki.back();
+        stack.pop_back();
+        stacki.pop_back();
+        if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
+        // composed = cbias + H * head + D * dep + R * relation
+        Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
+        Expression nlcomposed = tanh(composed);
+        stack_lstm.rewind_one_step();
+        stack_lstm.rewind_one_step();
+        stack_lstm.add_input(nlcomposed);
+        stack.push_back(nlcomposed);
+        stacki.push_back(headi);
+    }
+}*/
+
   // run beam search
-  vector<unsigned> LSTMParser::log_prob_parser_beam(ComputationGraph *hg, 
+vector<unsigned> LSTMParser::log_prob_parser_beam(ComputationGraph *hg, 
                     const vector<unsigned> &raw_sent,
                     const vector<unsigned> &sent, 
                     const vector<unsigned> &sentPos,
@@ -1396,13 +1404,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 // Since we have now confirmed that the beam is not complete, we want to generate all possible actions to
                 // take from here, and keep the best states for the next beam set
                 dg.decisions_made++;
-                int idx;
-                if (cur->bufferi.size() > 1)
-                    idx = sent.size() - cur->bufferi.back();
-                else
-                    idx = 0;
                 getNextBeamsArgs nba{setOfActions,p2a,pbias,abias,S,B,A,fwB,bwB,build_training_graph,
-                                      correct_actions,action_count,idx,bilstm_outputs};
+                                      correct_actions,action_count,bilstm_outputs};
                 vector<StepSelect> potential_next_beams;
                 getNextBeams(cur, &potential_next_beams,
                                  hg,
@@ -1568,7 +1571,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
   void LSTMParser::getNextBeams(ParserState* cur, vector<StepSelect>* potential_next_beams,
                           ComputationGraph* hg, const getNextBeamsArgs& args,
                           ParserState*& gold_parse){
-    const std::vector<BidirectionalLSTMLayer::Output>& bilstm_outputs = args.bilstm_outputs;
     const vector<string>& setOfActions = args.setOfActions;
     const Expression& p2a = args.p2a;
     const Expression& pbias = args.pbias;
@@ -1576,13 +1578,19 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     const Expression& S = args.S;
     const Expression& B = args.B;
     const Expression& A = args.A;
-    const Expression& fwB = args.fwB;
-    const Expression& bwB = args.bwB;
     const bool& build_training_graph = args.build_training_graph;
     const vector<unsigned>& correct_actions = args.correct_actions;
     const int& action_count = args.action_count;
-    const int& idx = args.idx;
 
+    //const std::vector<BidirectionalLSTMLayer::Output>& bilstm_outputs = args.bilstm_outputs;
+    //const Expression& fwB = args.fwB;
+    //const Expression& bwB = args.bwB;
+    int idx = 0;
+    if (Opt.USE_BILSTM){
+        unsigned sent_len = cur->graph.size();
+        if (cur->bufferi.size() > 1)
+            idx = sent_len - cur->bufferi.back();
+    }
     // get list of possible actions for the current parser state
     vector<unsigned> current_valid_actions;
     for (auto a: possible_actions) {
@@ -1599,14 +1607,14 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         //cerr << "bilstm: " << bilstm_outputs.size() << " id: " 
         //<< sent.size() - bufferi.back() << " bufferi: " << bufferi.back() << endl;
         Expression fwbuf,bwbuf;
-        fwbuf = bilstm_outputs[idx].first - bilstm_outputs[1].first;
-        bwbuf = bilstm_outputs[1].second - bilstm_outputs[idx].second;
+        fwbuf = args.bilstm_outputs[idx].first - args.bilstm_outputs[1].first;
+        bwbuf = args.bilstm_outputs[1].second - args.bilstm_outputs[idx].second;
         // [bilstm] p_t = pbias + S * slstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
-        p_t = affine_transform({pbias, S, stack_lstm.back(), fwB, fwbuf, bwB, bwbuf, 
-                                A, action_lstm.back()});
+        p_t = affine_transform({pbias, S, cur->stack_lstm.back(), args.fwB, fwbuf, args.bwB, bwbuf, 
+                                A, cur->action_lstm.back()});
     }else{
-        p_t = affine_transform({pbias, S, stack_lstm.back(), B, buffer_lstm.back(), 
-                                A, action_lstm.back()});
+        p_t = affine_transform({pbias, S, cur->stack_lstm.back(), B, cur->buffer_lstm.back(), 
+                                A, cur->action_lstm.back()});
     }
     Expression nlp_t = rectify(p_t);
     // r_t = abias + p2a * nlp
@@ -1659,6 +1667,84 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         potential_next_beams->push_back(next_step);
     }
 }
+
+// without [bilstm]
+/*void LSTMParser::getNextBeams2(ParserState* cur, vector<StepSelect>* potential_next_beams,
+                          ComputationGraph* hg, const getNextBeamsArgs& args,
+                          ParserState*& gold_parse){
+
+    const vector<string>& setOfActions = args.setOfActions;
+    const Expression& p2a = args.p2a;
+    const Expression& pbias = args.pbias;
+    const Expression& abias = args.abias;
+    const Expression& S = args.S;
+    const Expression& B = args.B;
+    const Expression& A = args.A;
+    const bool& build_training_graph = args.build_training_graph;
+    const vector<unsigned>& correct_actions = args.correct_actions;
+    const int& action_count = args.action_count;
+
+    // get list of possible actions for the current parser state
+    vector<unsigned> current_valid_actions;
+    for (auto a: possible_actions) {
+        if (IsActionForbidden2(setOfActions[a], cur->buffer.size(), cur->stack.size(), cur->stacki))
+            continue;
+        current_valid_actions.push_back(a);
+    }
+
+    // p_t = pbias + S * slstm + B * blstm + A * almst
+    Expression p_t = affine_transform({pbias, S, cur->stack_lstm.back(), B, cur->buffer_lstm.back(), A, cur->action_lstm.back()});
+    Expression nlp_t = rectify(p_t);
+    // r_t = abias + p2a * nlp
+    Expression r_t = affine_transform({abias, p2a, nlp_t});
+    // adist = log_softmax(r_t, current_valid_actions)
+    Expression adiste = log_softmax(r_t, current_valid_actions);
+    vector<float> adist = as_vector(hg->incremental_forward(adiste));
+
+    Expression log_zlocal;
+    if (Opt.GLOBAL_LOSS) { // not used in experiments
+        vector<Expression> intermediate;
+        for (unsigned valid_action_loc : current_valid_actions) { intermediate.push_back(pick(r_t, valid_action_loc)); }
+        log_zlocal = logsumexp(intermediate);
+    }
+    for (unsigned i = 0; i < current_valid_actions.size(); ++i) {
+        // For each action, its value is equal to the current state's value, plus the value of the action
+        double total_score = cur->score + adist[current_valid_actions[i]];
+        if (Opt.GLOBAL_LOSS) {
+            total_score = cur->score + *(pick(r_t, current_valid_actions[i]).value().v);
+        }
+        //cerr << "filling\n";
+        Action act;
+        act.score = adist[current_valid_actions[i]];
+        act.val = current_valid_actions[i];
+        act.log_prob = pick(adiste, act.val);
+        if (Opt.GLOBAL_LOSS) {
+            act.log_zlocal = log_zlocal;
+            act.rho = pick(r_t, act.val);
+            act.score = *(act.rho.value().v);
+        }
+        StepSelect next_step;
+        next_step.source = cur;
+        next_step.action = act;
+        next_step.total_score = total_score;
+
+        // if it is gold, give the gold act
+        if (build_training_graph && cur->gold) {
+            Action gold_act;
+            gold_act.score = adist[correct_actions[action_count]];
+            gold_act.val = correct_actions[action_count];
+            gold_act.log_prob = pick(adiste, gold_act.val);
+            if (Opt.GLOBAL_LOSS) {
+                gold_act.log_zlocal = log_zlocal;
+                gold_act.rho = pick(r_t, gold_act.val);
+                gold_act.score = *(gold_act.rho.value().v);
+            }
+            gold_parse = cur;
+            gold_parse->next_gold_action = gold_act;
+        }
+        potential_next_beams->push_back(next_step);
+    }
+}*/
 
 void LSTMParser::get_best_label(const vector<unsigned>& sent, const vector<unsigned>& sentPos, 
                                     ComputationGraph* hg, const vector<string>& setOfActions, 
