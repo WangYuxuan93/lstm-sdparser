@@ -1127,7 +1127,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
             Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
             nlcomposed = tanh(composed);
         }
-
         stack_lstm.rewind_one_step();
         stack_lstm.rewind_one_step();
         stack_lstm.add_input(nlcomposed);
@@ -1273,7 +1272,9 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         init->stack_lstm = stack_lstm;
         init->buffer_lstm = buffer_lstm;
         init->action_lstm = action_lstm;
-        init->tree_lstm = tree_lstm;
+        if (Opt.USE_TREELSTM){
+            init->tree_lstm = tree_lstm;
+        }
         init->buffer = buffer;
         init->bufferi = bufferi;
         init->stack = stack;
@@ -1373,11 +1374,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 }
             } 
 
-
-            // define a couple of data structures to parallelize
-            // NOTE - this didn't end up working
-            //vector<boost::thread*> threadz;
-            //vector<vector<StepSelect>*> next_beam_array;
             while (ongoing.size() != 0) {
                 // get the state of a beam, and remove that beam from ongoing (because it has been processed)
                 ParserState *cur = ongoing.back();
@@ -1427,6 +1423,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
             stack_lstm = gold_parse->stack_lstm;
             buffer_lstm = gold_parse->buffer_lstm;
             action_lstm = gold_parse->action_lstm;
+            tree_lstm = gold_parse->tree_lstm; //[treelstm]
             stack = gold_parse->stack;
             stacki = gold_parse->stacki;
             buffer = gold_parse->buffer;
@@ -1448,6 +1445,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
             stack_lstm = completed.front()->stack_lstm;
             buffer_lstm = completed.front()->buffer_lstm;
             action_lstm = completed.front()->action_lstm;
+            tree_lstm = completed.front()->tree_lstm; //[treelstm]
             stack = completed.front()->stack;
             stacki = completed.front()->stacki;
             buffer = completed.front()->buffer;
