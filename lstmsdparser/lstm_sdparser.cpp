@@ -33,7 +33,10 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   corpus.set_transition_system(Opt.transition_system);
   if (DEBUG)
     cerr << "Loading training data from " << training_data_file << endl;
-  corpus.load_correct_actions(training_data_file);
+  //corpus.load_correct_actions(training_data_file);
+  corpus.load_conll_file(training_data_file);
+  if (DEBUG)
+    cerr << "finish loading training data" << endl;
 
   kUNK = corpus.get_or_add_word(cpyp::Corpus::UNK);
 
@@ -136,7 +139,8 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   if (dev_data_file.length() > 0){
     if (DEBUG)
       cerr << "loading dev data from " << dev_data_file << endl;
-    corpus.load_correct_actionsDev(dev_data_file);
+    //corpus.load_correct_actionsDev(dev_data_file);
+    corpus.load_conll_fileDev(dev_data_file);
     if (DEBUG)
       cerr << "finish loading dev data" << endl;
   }

@@ -29,6 +29,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
         ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
         ("model,m", po::value<string>(), "Load saved model from this file")
+        ("model_dir", po::value<string>()->default_value(""), "Directory of model")
         ("use_pos_tags,P", "make POS tags visible to parser")
         ("use_bilstm,B", "use bilstm for buffer")
         ("use_treelstm,R", "use treelstm for subtree in stack")
@@ -61,7 +62,6 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
 
 int main(int argc, char** argv) {
   //dynet::Initialize(argc, argv);
-
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
   cerr << endl;
@@ -115,7 +115,8 @@ int main(int argc, char** argv) {
   const double unk_prob = conf["unk_prob"].as<double>();
   assert(unk_prob >= 0.); assert(unk_prob <= 1.);
   ostringstream os;
-  os << "parser_" << Opt.transition_system
+  os << conf["model_dir"].as<string>()
+    << "parser_" << Opt.transition_system
     << '_' << (Opt.GLOBAL_LOSS ? "glb" : "loc")
     << '_' << (Opt.USE_POS ? "pos" : "nopos")
     << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
