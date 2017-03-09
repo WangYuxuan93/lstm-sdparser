@@ -18,7 +18,7 @@ std::string StrToLower(const std::string s){
 
 //struct LSTMParser {
 
-LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 0, "list", 
+LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 0, "list-tree", 
                                 "", "4000", true, false, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
@@ -217,7 +217,7 @@ vector<unsigned> LSTMParser::get_children(unsigned id, const vector<vector<bool>
 bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, 
                                       unsigned root, const vector<vector<bool>> dir_graph, //const vector<bool>  dir_graph [], 
                                       const vector<int>& stacki, const vector<int>& bufferi) {
-    if (transition_system == "list"){
+    if (transition_system == "list-graph"){
         //cerr << a << endl;
         int s0 = stacki.back();
         int b0 = bufferi.back();
@@ -252,7 +252,7 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
         }
         return false;
   }
-    else if (transition_system == "tree"){
+    else if (transition_system == "list-tree"){
         int s0 = stacki.back();
         int b0 = bufferi.back();
         int root_num = 0;
@@ -359,7 +359,7 @@ vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, c
 
       cerr << "action:" << actionString << endl;*/
 
-        if (transition_system == "list" || transition_system == "tree"){
+        if (transition_system == "list-graph" || transition_system == "list-tree"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
                 assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 int passi_size = (int)passi.size();
@@ -411,7 +411,7 @@ vector<vector<string>> LSTMParser::compute_heads(const vector<unsigned>& sent, c
                 }
             }
         }
-        else if (transition_system == "arcstd"){
+        else if (transition_system == "swap"){
             if (ac =='S' && ac2=='H') {  // SHIFT
                 assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 stacki.push_back(bufferi.back());
@@ -485,7 +485,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
     stack_lstm.new_graph(*hg);
     stack_lstm.start_new_sequence();
-    if (transition_system == "list" || transition_system == "tree"){
+    if (transition_system == "list-graph" || transition_system == "list-tree"){
       pass_lstm.new_graph(*hg);
       pass_lstm.start_new_sequence();
     }
@@ -578,7 +578,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
     vector<Expression> pass; //variables reperesenting embedding in pass buffer
     vector<int> passi; //position of words in pass buffer
-    if (Opt.transition_system == "list" || Opt.transition_system == "tree"){   
+    if (Opt.transition_system == "list-graph" || Opt.transition_system == "list-tree"){   
       pass.push_back(parameter(*hg, p_pass_guard));
       passi.push_back(-999); // not used for anything
       pass_lstm.add_input(pass.back());
@@ -605,8 +605,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         dir_graph.push_back(v);
     }
     //remove stack.size() > 2 ||
-    while(((transition_system == "list" || transition_system == "tree") && bufferi.size() > 1)
-          || (transition_system == "arcstd" && (stacki.size() > 2 || bufferi.size() > 1))) {
+    while(((transition_system == "list-graph" || transition_system == "list-tree") && bufferi.size() > 1)
+          || (transition_system == "swap" && (stacki.size() > 2 || bufferi.size() > 1))) {
       // get list of possible actions for the current parser state
       vector<unsigned> current_valid_actions;
       /*if (!build_training_graph){
@@ -622,7 +622,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         cerr << corpus.intToWords[sent[bufferi[i]]]<<"-"<<bufferi[i]<<", ";
       cerr <<"]"<<endl;
       //}*/
-      if (transition_system == "list" || transition_system == "tree")
+      if (transition_system == "list-graph" || transition_system == "list-tree")
         for (auto a: possible_actions) {
           //cerr << " " << setOfActions[a]<< " ";
           if (IsActionForbidden(setOfActions[a], buffer.size(), stack.size(), sent.size() - 1, dir_graph, stacki, bufferi))
@@ -630,7 +630,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
           //cerr << " <" << setOfActions[a] << "> ";
           current_valid_actions.push_back(a);
         }
-      else if (transition_system == "arcstd")
+      else if (transition_system == "swap")
         for (auto a: possible_actions) {
           if (IsActionForbidden2(setOfActions[a], bufferi.size(), stacki.size(), stacki))
             continue;
@@ -654,18 +654,18 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         /*p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
           fwB, bilstm_outputs[sent.size() - bufferi.back()].first, bwB, bilstm_outputs[sent.size() - bufferi.back()].second,
           A, action_lstm.back()});*/
-        if (transition_system == "list" || transition_system == "tree")
+        if (transition_system == "list-graph" || transition_system == "list-tree")
           p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
                                 fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
-        else if (transition_system == "arcstd")
+        else if (transition_system == "swap")
           p_t = affine_transform({pbias, S, stack_lstm.back(), fwB, fwbuf, bwB, bwbuf, 
                                 A, action_lstm.back()});
         //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
       }else{
-        if (transition_system == "list" || transition_system == "tree")
+        if (transition_system == "list-graph" || transition_system == "list-tree")
           // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
           p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
-        else if (transition_system == "arcstd")
+        else if (transition_system == "swap")
           p_t = affine_transform({pbias, S, stack_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
       }
       Expression nlp_t = rectify(p_t);
@@ -688,7 +688,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         action = correct_actions[action_count];
         if (best_a == action) { (*right)++; }
       }
-      if (transition_system == "list" || transition_system == "tree"){
+      if (transition_system == "list-graph" || transition_system == "list-tree"){
         if (setOfActions[action] == "NS"){
           double second_score = - DBL_MAX;
           string second_a = setOfActions[current_valid_actions[0]];
@@ -714,13 +714,13 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       //cerr <<endl<< "gold action: " << setOfActions[action] <<endl;
       ++action_count;
       log_probs.push_back(pick(adiste, action));
-      if (transition_system == "arcstd")
+      if (transition_system == "swap")
         apply_action(hg,
                    stack_lstm, buffer_lstm, action_lstm, tree_lstm,
                    buffer, bufferi, stack, stacki, results,
                    action, setOfActions, sent, intToWords,
                    cbias, H, D, R, &rootword, dir_graph, word_emb);
-      else if (transition_system == "list" || transition_system == "tree") {
+      else if (transition_system == "list-graph" || transition_system == "list-tree") {
         results.push_back(action);
 
         // add current action to action LSTM
@@ -736,7 +736,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         const char ac2 = actionString[1];
         //cerr << ac << ac2 << endl;
 
-        if (transition_system == "list" || transition_system == "tree"){
+        if (transition_system == "list-graph" || transition_system == "list-tree"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
                 assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
                 int pass_size = (int)pass.size();
@@ -873,7 +873,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         }
       }
     }
-    if (transition_system == "arcstd"){
+    if (transition_system == "swap"){
         assert(stack.size() == 2); // guard symbol, root
         assert(stacki.size() == 2);
     }

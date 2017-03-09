@@ -22,7 +22,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("training_data,T", po::value<string>(), "List of Transitions - Training corpus")
         ("dev_data,d", po::value<string>(), "Development corpus")
         ("test_data,p", po::value<string>(), "Test corpus")
-        ("transition_system,s", po::value<string>()->default_value("list"), "Transition system(arcstd - arcstandard, list - listbased, tree - tree listbased)")
+        ("transition_system,s", po::value<string>()->default_value("list-tree"), "Transition system(swap - arcstandard, list-tree - listbased tree, list-graph - list-graph listbased graph)")
         ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
         ("dynet_seed", po::value<string>(), "Dynet seed for initialization")
         ("dynet_mem", po::value<string>()->default_value("4000"), "Dynet memory size (MB) for initialization")
@@ -61,6 +61,36 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
 }
 
 int main(int argc, char** argv) {
+  /*cpyp::Corpus corpus1,corpus2;
+  corpus1.set_transition_system("list-tree");
+  corpus2.set_transition_system("list-tree");
+  cerr << "start loading" << endl;
+  corpus1.load_correct_actions("/mnt/hgfs/share/oracle/en-ud-test.oracle");
+  
+  corpus2.load_conll_file("/mnt/hgfs/share/oracle/en-ud-test.conll");
+  cerr << "finish loading" << endl;
+  cerr << corpus1.nsentences << " " <<corpus2.nsentences << endl;
+  for (int i = 0; i < corpus1.nsentences; ++i){
+    std::vector<unsigned> a1 = corpus1.correct_act_sent[i];
+    std::vector<unsigned> a2 = corpus2.correct_act_sent[i];
+    bool flag = false;
+    for (int j = 0; j < a1.size(); ++j){
+      if (a1[j] != a2[j])
+        flag = true;
+    }
+    if (flag){
+      cerr << "id: " << i << endl;
+      for (auto w : corpus1.sentences[i])
+        cerr << corpus1.intToWords[w] << endl;
+      cerr << endl << endl;
+      for (auto a : a1)
+        std::cerr << corpus1.actions[a] << ",";
+      cerr << endl << endl;
+      for (auto a : a2)
+        std::cerr << corpus2.actions[a] << ",";
+      cerr << endl;
+    }
+  }*/
   //dynet::Initialize(argc, argv);
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
