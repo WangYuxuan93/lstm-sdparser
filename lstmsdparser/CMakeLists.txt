@@ -2,9 +2,11 @@ include_directories (${PROJECT_SOURCE_DIR}/)
 
 set (lstm_sdparser_VERSION "0.0.1")
 set (lstm_sdparser_SRC
-    lstm_sdparser.cpp
+	lstm_sdparser.cpp
     layers.cc
     theirtreelstm.cc
+    swapbased.cc
+    listbased.cc
     )
 
 add_library(lstm_sdparser_static_lib STATIC lstm_sdparser_dll.cpp ${lstm_sdparser_SRC})
@@ -16,7 +18,7 @@ set_target_properties (lstm_sdparser_shared_lib    PROPERTIES
     VERSION         ${lstm_sdparser_VERSION}
     OUTPUT_NAME     lstm_sdparser)
 
-add_executable(lstm-parse lstm-parse.cc c2.h layers.cc theirtreelstm.cc)
+add_executable(lstm-parse lstm-parse.cc ${lstm_sdparser_SRC})
 target_link_libraries(lstm-parse dynet ${Boost_LIBRARIES})
 
 add_executable(lstmparse main.cpp ${lstm_sdparser_SRC})

@@ -10,9 +10,11 @@
 #include <set>
 #include <unordered_map>
 #include <functional>
-#include <vector>
 #include <map>
 #include <string>
+
+#include "lstmsdparser/swapbased.h"
+#include "lstmsdparser/listbased.h"
 
 namespace cpyp {
 
@@ -20,46 +22,46 @@ class Corpus {
  //typedef std::unordered_map<std::string, unsigned, std::hash<std::string> > Map;
 // typedef std::unordered_map<unsigned,std::string, std::hash<std::string> > ReverseMap;
 public: 
-   bool DEBUG = false;
-   bool USE_SPELLING=false;
-   std::string transition_system; 
+  bool DEBUG = false;
+  bool USE_SPELLING=false;
+  std::string transition_system; 
 
-   std::map<int,std::vector<unsigned>> correct_act_sent;
-   std::map<int,std::vector<unsigned>> sentences;
-   std::map<int,std::vector<unsigned>> sentencesPos;
+  std::map<int,std::vector<unsigned>> correct_act_sent;
+  std::map<int,std::vector<unsigned>> sentences;
+  std::map<int,std::vector<unsigned>> sentencesPos;
 
-   std::map<int,std::vector<unsigned>> correct_act_sentDev;
-   std::map<int,std::vector<unsigned>> sentencesDev;
-   std::map<int,std::vector<unsigned>> sentencesPosDev;
-   std::map<int,std::vector<std::string>> sentencesStrDev;
-   unsigned nsentencesDev;
+  std::map<int,std::vector<unsigned>> correct_act_sentDev;
+  std::map<int,std::vector<unsigned>> sentencesDev;
+  std::map<int,std::vector<unsigned>> sentencesPosDev;
+  std::map<int,std::vector<std::string>> sentencesStrDev;
+  unsigned nsentencesDev;
 
-   unsigned nsentences;
-   unsigned nwords;
-   unsigned nactions;
-   unsigned npos;
+  unsigned nsentences;
+  unsigned nwords;
+  unsigned nactions;
+  unsigned npos;
 
-   unsigned nsentencestest;
-   unsigned nsentencesdev;
-   int max;
-   int maxPos;
+  unsigned nsentencestest;
+  unsigned nsentencesdev;
+  int max;
+  int maxPos;
 
-   std::map<std::string, unsigned> wordsToInt;
-   std::map<unsigned, std::string> intToWords;
-   std::vector<std::string> actions;
+  std::map<std::string, unsigned> wordsToInt;
+  std::map<unsigned, std::string> intToWords;
+  std::vector<std::string> actions;
 
-   std::map<std::string, unsigned> posToInt;
-   std::map<unsigned, std::string> intToPos;
+  std::map<std::string, unsigned> posToInt;
+  std::map<unsigned, std::string> intToPos;
 
-   int maxChars;
-   std::map<std::string, unsigned> charsToInt;
-   std::map<unsigned, std::string> intToChars;
+  int maxChars;
+  std::map<std::string, unsigned> charsToInt;
+  std::map<unsigned, std::string> intToChars;
 
-   // String literals
-   static constexpr const char* UNK = "UNK";
-   static constexpr const char* BAD0 = "<BAD0>";
+  // String literals
+  static constexpr const char* UNK = "UNK";
+  static constexpr const char* BAD0 = "<BAD0>";
 
-   //! The tree type.
+  //! The tree type.
   typedef std::vector<std::vector<int> > tree_t;
   //! The MPC calculate result type
   typedef std::tuple<bool, int, int> mpc_result_t;
@@ -155,355 +157,6 @@ inline std::vector<std::string> split(const std::string& source, int maxsplit = 
   return ret;
 }
 
-void get_oracle_actions_calculate_orders(int root,
-    const tree_t& tree,
-    std::vector<int>& orders,
-    int& timestamp) {
-  const std::vector<int>& children = tree[root];
-  if (children.size() == 0) {
-    orders[root] = timestamp;
-    timestamp += 1;
-    return;
-  }
-
-  int i;
-  for (i = 0; i < children.size() && children[i] < root; ++ i) {
-    int child = children[i];
-    get_oracle_actions_calculate_orders(child, tree, orders, timestamp);
-  }
-
-  orders[root] = timestamp;
-  timestamp += 1;
-
-  for (; i < children.size(); ++ i) {
-    int child = children[i];
-    get_oracle_actions_calculate_orders(child, tree, orders, timestamp);
-  }
-}
-
-mpc_result_t get_oracle_actions_calculate_mpc(int root,
-    const tree_t& tree,
-    std::vector<int>& MPC) {
-  const std::vector<int>& children = tree[root];
-  if (children.size() == 0) {
-    MPC[root] = root;
-    return std::make_tuple(true, root, root);
-  }
-
-  int left = root, right = root;
-  bool overall = true;
-
-  int pivot = -1;
-  for (pivot = 0; pivot < children.size() && children[pivot] < root; ++ pivot);
-
-  for (int i = pivot - 1; i >= 0; -- i) {
-    int child = children[i];
-    mpc_result_t result =
-      get_oracle_actions_calculate_mpc(child, tree, MPC);
-    overall = overall && std::get<0>(result);
-    if (std::get<0>(result) == true && std::get<2>(result) + 1 == left) {
-      left = std::get<1>(result);
-    } else {
-      overall = false;
-    }
-  }
-
-  for (int i = pivot; i < children.size(); ++ i) {
-    int child = children[i];
-    mpc_result_t result = get_oracle_actions_calculate_mpc(child, tree, MPC);
-    overall = overall && std::get<0>(result);
-    if (std::get<0>(result) == true && right + 1 == std::get<1>(result)) {
-      right = std::get<2>(result);
-    } else {
-      overall = false;
-    }
-  }
-
-  for (int i = left; i <= right; ++ i) { MPC[i] = root; }
-
-  return std::make_tuple(overall, left, right);
-}
-
-void get_swap_oracle_actions_onestep(std::map<int, std::vector<std::pair<int, std::string>>>& graph,
-    const tree_t& tree,
-    std::vector<int>& heads_rec,
-    std::vector<int>& sigma,
-    std::vector<int>& beta,
-    std::vector<std::string>& actions,
-    const std::vector<int>& orders,
-    const std::vector<int>& MPC) {
-  //! the head will be saved in heads record after been reduced
-  
-  if (sigma.size() < 2) {
-    actions.push_back("SHIFT");
-    sigma.push_back(beta.back()); beta.pop_back();
-    return;
-  }
-
-  int top0 = sigma.back();
-  int top1 = sigma[sigma.size() - 2];
-
-  //INFO_LOG("step1 %d %d %d",top1,top0,beta.back());
-  if (graph[top1].back().first == top0) {
-    bool all_found = true;
-    for (int c: tree[top1]) { if (heads_rec[c] == -1) { all_found = false; } }
-    if (all_found) {
-      actions.push_back("LEFT-ARC("+graph[top1].back().second+")");
-      sigma.pop_back(); sigma.back() = top0; heads_rec[top1] = top0;
-      return;
-    }
-  }
-  if (graph[top0].back().first == top1) {
-    bool all_found = true;
-    for (int c: tree[top0]) { if (heads_rec[c] == -1) { all_found = false; } }
-    if (all_found) {
-      actions.push_back("RIGHT-ARC("+graph[top0].back().second+")");
-      sigma.pop_back(); heads_rec[top0] = top1;
-      return;
-    }
-  }
-  int k = beta.empty() ? -1 : beta.back();
-  if ((orders[top0] < orders[top1]) &&
-      (k == -1 || MPC[top0] != MPC[k])) {
-    actions.push_back("SWAP");
-    sigma.pop_back(); sigma.back() = top0; beta.push_back(top1);
-  } else {
-    actions.push_back("SHIFT");
-    sigma.push_back(beta.back()); beta.pop_back();
-  }
-}
-
-// return if w1 is one head of w0
-bool has_head(std::map<int, std::vector<std::pair<int, std::string>>>& graph, int w0, int w1){
-  if (w0 <= 0) return false;
-  for (auto w : graph[w0 - 1]){
-    if (w.first == w1 - 1)
-      return true;
-  }
-  return false;
-}
-
-bool has_unfound_child(const tree_t& top_down_graph, std::vector<std::vector<bool>>& subgraph, int w){
-  //std::cerr << std::endl << "has unfound child: " << w << " ";
-  for (auto child : top_down_graph[w]){
-    //std::cerr << child << " , ";
-    if (!subgraph[child][w])
-      return true;
-  }
-  return false;
-}
-
-//return if w has other head except the present one
-bool has_other_head(std::map<int, std::vector<std::pair<int, std::string>>>& graph,
-                    std::vector<std::vector<bool>>& subgraph, int w){
-  int head_num = 0;
-  for (auto h : subgraph[w]){
-    if (h) ++head_num;
-  }
-  //std::cerr << "has other head: " << w << " sub: " << head_num << " gold: " << graph[w].size() << std::endl;
-  if (head_num + 1 < graph[w - 1].size())
-    return true;
-  return false;
-}
-
-//return if w has any unfound head
-bool lack_head(std::map<int, std::vector<std::pair<int, std::string>>>& graph,
-                    std::vector<std::vector<bool>>& subgraph, int w){
-  if (w < 0) return false;
-  int head_num = 0;
-  for (auto h : subgraph[w]){
-    if (h) ++head_num;
-  }
-  if (head_num < graph[w - 1].size())
-    return true;
-  return false;
-}
-
-//return if w has any unfound child in stack sigma 
-//!!! except the top in stack
-bool has_other_child_in_stack(std::vector<std::vector<bool>>& subgraph, std::vector<int>& sigma, 
-                              const tree_t& top_down_graph, int w){
-  if (w < 0) return false; // w = 0 is the root
-  for (auto c : top_down_graph[w]){
-    if (find(sigma.begin(), sigma.end(), c) != sigma.end() 
-        && c!= sigma.back() && !subgraph[c][w])
-      return true;
-  }
-  return false;
-}
-
-//return if w has any unfound head in stack sigma 
-//!!! except the top in stack
-bool has_other_head_in_stack(std::vector<std::vector<bool>>& subgraph, std::vector<int>& sigma, 
-                            std::map<int, std::vector<std::pair<int, std::string>>>& graph, int w){
-  if (w < 0) return false; // w = -1 is the root
-  for (auto h : graph[w - 1]) {
-    if (find(sigma.begin(), sigma.end(), h.first + 1) != sigma.end() 
-        && (h.first + 1)!= sigma.back() && !subgraph[w][h.first + 1])
-      return true;
-  }
-  return false;
-}
-
-//return the relation between child : w0, head : w1
-std::string get_arc_label(std::map<int, std::vector<std::pair<int, std::string>>>& graph,
-                          int w0, int w1){
-  for (auto h : graph[w0 - 1]){
-    if (h.first == w1 - 1){
-      return h.second;
-    }
-  }
-  std::cerr << "ERORR in list get_arc_label!" << std::endl;
-  return "-ERORR-";
-}
-
-void get_list_oracle_actions_onestep(std::map<int, std::vector<std::pair<int, std::string>>>& graph,
-    const tree_t& top_down_graph,
-    std::vector<int>& sigma,
-    std::vector<int>& delta,
-    std::vector<int>& beta,
-    std::vector<std::vector<bool>>& subgraph, // subgraph[a][b] means b is the head of a
-    std::vector<std::string>& actions) {
-  int s0 = sigma.empty() ? -1 : sigma.back();
-  int b0 = beta.empty() ? -1 : beta.back();
-  //std::cerr << "s0: " << s0 << " b0: "<< b0 << std::endl;
-
-  if (s0 > 0 && has_head(graph, s0, b0)) { // left s0 <- b0
-    if ( !has_unfound_child(top_down_graph, subgraph, s0)
-        && !has_other_head(graph, subgraph, s0)){
-      actions.push_back("LR(" + get_arc_label(graph, s0, b0) + ")");
-      sigma.pop_back(); subgraph[s0][b0] = true;
-      return;
-    }
-    else{ //has other child or head
-      actions.push_back("LP(" + get_arc_label(graph, s0, b0) + ")");
-      delta.push_back(sigma.back()); sigma.pop_back(); subgraph[s0][b0] = true;
-      return;
-    }
-  }
-  else if ( s0 > 0 && has_head(graph, b0, s0)) { //right arc s0 -> b0
-    if ( !has_other_child_in_stack(subgraph, sigma, top_down_graph, b0)
-        && !has_other_head_in_stack(subgraph, sigma, graph, b0)){
-      actions.push_back("RS(" + get_arc_label(graph, b0, s0) + ")");
-      while (!delta.empty()){
-        sigma.push_back(delta.back()); delta.pop_back();
-      }
-      sigma.push_back(beta.back()); beta.pop_back(); subgraph[b0][s0] = true;
-      return;
-    }
-    else if (s0 > 0){
-      actions.push_back("RP(" + get_arc_label(graph, b0, s0) + ")");
-      delta.push_back(sigma.back()); sigma.pop_back(); subgraph[b0][s0] = true;
-      return;
-    }
-  }
-  else if (!beta.empty()
-          && !has_other_child_in_stack(subgraph, sigma, top_down_graph, b0)
-          && !has_other_head_in_stack(subgraph, sigma, graph, b0) 
-          ){
-    actions.push_back("NS");
-    while (!delta.empty()){
-      sigma.push_back(delta.back()); delta.pop_back();
-    }
-    sigma.push_back(beta.back()); beta.pop_back();
-    return;
-  }
-  else if ( s0 > 0
-          && !has_unfound_child(top_down_graph, subgraph, s0)
-          && !lack_head(graph, subgraph, s0)){
-    actions.push_back("NR");
-    sigma.pop_back();
-    return;
-  }
-  else if ( s0 > 0){
-    actions.push_back("NP");
-    delta.push_back(sigma.back()); sigma.pop_back();
-    return; 
-  }
-  else {
-    actions.push_back("-E-");
-    std::cerr << "error in oracle!" << std::endl;
-    return;
-  }
-}
-
-void get_actions(std::map<int, std::vector<std::pair<int, std::string>>> graph,
-                 std::vector<std::string>& gold_actions){
-  if (transition_system == "swap"){
-    int N = graph.size();
-    int root = -1;
-    tree_t tree(N);
-    for (int i = 0; i < N; ++ i) {
-      int head = graph[i].back().first;
-      if (head == -1) {
-        if (root != -1)
-          std::cerr << "error: there should be only one root." << std::endl;
-        root = i;
-      } else {
-        tree[head].push_back(i);
-      }
-    }
-    //! calculate the projective order
-    int timestamp = 0;//!count for the order number
-    std::vector<int> orders(N, -1);
-    get_oracle_actions_calculate_orders(root,tree,orders,timestamp);
-    std::vector<int> MPC(N, 0);
-    get_oracle_actions_calculate_mpc(root,tree,MPC);
-    gold_actions.clear();
-    size_t len = N;
-    std::vector<int> sigma;
-    std::vector<int> beta;
-    std::vector<int> heads_rec(N, -1);
-    //std::vector<int> output(len, -1);
-
-    //int step = 0;
-    beta.push_back(-1);
-    for (int i = N - 1; i >= 0; -- i) { beta.push_back(i); }
-    while (!(sigma.size() ==1 && beta.empty())) {
-      get_swap_oracle_actions_onestep(graph, tree, heads_rec, sigma, beta, gold_actions,orders,MPC);
-    }
-  }
-  else if (transition_system == "list-graph" || transition_system == "list-tree"){
-    int N = graph.size();
-    tree_t top_down_graph(N + 1);
-    int root = -1;
-    // each id is +1 from graph, so when used in graph should -1
-    for (int i = 0; i < N; ++ i) {
-      for (auto n: graph[i]){
-        int head = n.first + 1;
-        if (head == -1) {
-          if (root != -1)
-            std::cerr << "error: there should be only one root." << std::endl;
-          root = i + 1;
-        } else {
-          top_down_graph[head].push_back(i + 1);
-        }
-      }
-    }
-    std::vector<int> sigma;
-    std::vector<int> beta;
-    std::vector<int> delta; // for pass action
-    std::vector<bool> v(N + 1, false);
-    std::vector<std::vector<bool>> subgraph;
-    for (int i = 0; i < N + 1; ++i) subgraph.push_back(v);
-    beta.push_back(0);
-    for (int i = N; i >= 1; -- i) { beta.push_back(i); }
-    while (!beta.empty()) {
-      get_list_oracle_actions_onestep(graph, top_down_graph, sigma, delta, beta, subgraph, gold_actions);
-      /*std::cerr << gold_actions.back() << std::endl;
-      std::cerr << "stack: ";
-      for (auto i : sigma) std::cerr << i << " , ";
-      std::cerr << "pass: ";
-      for (auto i : delta) std::cerr << i << " , ";
-      std::cerr << "buffer: ";
-      for (auto i : beta) std::cerr << i <<" , ";
-      std::cerr << std::endl;*/
-    }
-    //gold_actions.push_back("LR(Root)"); 
-    //gold_actions.push_back("NS"); 
-  }
-}
-
 inline void load_conll_file(std::string file){
   std::ifstream actionsFile(file);
   //correct_act_sent=new vector<vector<unsigned>>();
@@ -535,6 +188,11 @@ inline void load_conll_file(std::string file){
   bool is_tree = true;
   int ngraph = 0;
   std::map<int, std::vector<std::pair<int, std::string>>> graph;
+  TransitionSystem* system;
+  if (transition_system == "swap")
+    system = new SwapBased();
+  else if (transition_system == "list-graph" || transition_system == "list-tree")
+    system = new ListBased();
   while (getline(actionsFile, lineS)){
     //istringstream iss(line);
     //string lineS;
@@ -549,7 +207,7 @@ inline void load_conll_file(std::string file){
       }*/
 
       std::vector<std::string> gold_acts;
-      get_actions(graph, gold_acts);
+      system->get_actions(graph, gold_acts);
       bool found=false;
       //std::cerr << std::endl;
       for (auto g: gold_acts){
@@ -635,7 +293,7 @@ inline void load_conll_file(std::string file){
   // Add the last sentence.
   if (current_sent.size() > 0) {
     std::vector<std::string> gold_acts;
-    get_actions(graph, gold_acts);
+    system->get_actions(graph, gold_acts);
     bool found=false;
     for (auto g: gold_acts){
       //std::cerr << g << std::endl;
@@ -708,6 +366,11 @@ inline void load_conll_fileDev(std::string file){
   bool is_tree = true;
   int ngraph = 0;
   std::map<int, std::vector<std::pair<int, std::string>>> graph;
+  TransitionSystem* system;
+  if (transition_system == "swap")
+    system = new SwapBased();
+  else if (transition_system == "list-graph" || transition_system == "list-tree")
+    system = new ListBased();
   while (getline(actionsFile, lineS)){
     //istringstream iss(line);
     //string lineS;
@@ -716,7 +379,7 @@ inline void load_conll_fileDev(std::string file){
     ReplaceStringInPlace(lineS, "-LRB-", "_LRB_");
     if (lineS.empty()) {
       std::vector<std::string> gold_acts;
-      get_actions(graph, gold_acts);
+      system->get_actions(graph, gold_acts);
       bool found=false;
       for (auto g: gold_acts){
         //std::cerr << g << std::endl;
@@ -796,7 +459,7 @@ inline void load_conll_fileDev(std::string file){
   // Add the last sentence.
   if (current_sent.size() > 0) {
     std::vector<std::string> gold_acts;
-    get_actions(graph, gold_acts);
+    system->get_actions(graph, gold_acts);
     bool found=false;
     for (auto g: gold_acts){
       //std::cerr << g << std::endl;

@@ -63,13 +63,14 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
 int main(int argc, char** argv) {
   /*cpyp::Corpus corpus1,corpus2;
   corpus1.set_transition_system("list-tree");
-  corpus2.set_transition_system("list-tree");
+  corpus2.set_transition_system("list1");
   cerr << "start loading" << endl;
-  corpus1.load_correct_actions("/mnt/hgfs/share/oracle/en-ud-test.oracle");
+  corpus1.load_conll_file("/mnt/hgfs/share/oracle/en-ud-test.conll");
   
   corpus2.load_conll_file("/mnt/hgfs/share/oracle/en-ud-test.conll");
   cerr << "finish loading" << endl;
   cerr << corpus1.nsentences << " " <<corpus2.nsentences << endl;
+  int diff;
   for (int i = 0; i < corpus1.nsentences; ++i){
     std::vector<unsigned> a1 = corpus1.correct_act_sent[i];
     std::vector<unsigned> a2 = corpus2.correct_act_sent[i];
@@ -79,7 +80,8 @@ int main(int argc, char** argv) {
         flag = true;
     }
     if (flag){
-      cerr << "id: " << i << endl;
+      ++diff;
+      cerr << "diff id: " << i << endl;
       for (auto w : corpus1.sentences[i])
         cerr << corpus1.intToWords[w] << endl;
       cerr << endl << endl;
@@ -90,7 +92,8 @@ int main(int argc, char** argv) {
         std::cerr << corpus2.actions[a] << ",";
       cerr << endl;
     }
-  }*/
+  }
+  cerr << "diff num: " << diff << endl;*/
   //dynet::Initialize(argc, argv);
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
