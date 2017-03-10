@@ -40,20 +40,22 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
 
   kUNK = corpus.get_or_add_word(cpyp::Corpus::UNK);
 
-  pretrained[kUNK] = std::vector<float>(Opt.PRETRAINED_DIM, 0);
-  if (DEBUG)
-    cerr << "Loading word embeddings from " << word_embedding_file << " with " << Opt.PRETRAINED_DIM << " dimensions\n";
-  ifstream in(word_embedding_file.c_str());
-  string line;
-  getline(in, line);
-  std::vector<float> v(Opt.PRETRAINED_DIM, 0);
-  string word;
-  while (getline(in, line)) {
-    istringstream lin(line);
-    lin >> word;
-    for (unsigned i = 0; i < Opt.PRETRAINED_DIM; ++i) lin >> v[i];
-    unsigned id = corpus.get_or_add_word(word);
-    pretrained[id] = v;
+  if (word_embedding_file.length() > 0){
+    pretrained[kUNK] = std::vector<float>(Opt.PRETRAINED_DIM, 0);
+    if (DEBUG)
+      cerr << "Loading word embeddings from " << word_embedding_file << " with " << Opt.PRETRAINED_DIM << " dimensions\n";
+    ifstream in(word_embedding_file.c_str());
+    string line;
+    getline(in, line);
+    std::vector<float> v(Opt.PRETRAINED_DIM, 0);
+    string word;
+    while (getline(in, line)) {
+      istringstream lin(line);
+      lin >> word;
+      for (unsigned i = 0; i < Opt.PRETRAINED_DIM; ++i) lin >> v[i];
+      unsigned id = corpus.get_or_add_word(word);
+      pretrained[id] = v;
+    }
   }
 
   get_dynamic_infos();

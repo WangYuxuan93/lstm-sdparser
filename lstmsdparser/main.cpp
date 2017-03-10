@@ -45,7 +45,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("rel_dim", po::value<unsigned>()->default_value(50), "relation dimension")
         ("lstm_input_dim", po::value<unsigned>()->default_value(200), "LSTM input dimension")
         ("train,t", "Should training be run?")
-        ("words,w", po::value<string>(), "Pretrained word embeddings")
+        ("words,w", po::value<string>()->default_value(""), "Pretrained word embeddings")
         ("help,h", "Help");
   po::options_description dcmdline_options;
   dcmdline_options.add(opts);
