@@ -65,6 +65,7 @@ typedef struct Options {
 	unsigned REL_DIM; // 50
   unsigned BILSTM_HIDDEN_DIM; // 100
   unsigned beam_size; // 0
+  unsigned max_itr; // 10000
 	std::string transition_system; // "list"
   std::string dynet_seed;
   std::string dynet_mem;

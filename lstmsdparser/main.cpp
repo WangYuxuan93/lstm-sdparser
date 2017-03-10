@@ -30,6 +30,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
         ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
         ("model,m", po::value<string>(), "Load saved model from this file")
         ("model_dir", po::value<string>()->default_value(""), "Directory of model")
+        ("max_itr", po::value<unsigned>()->default_value(10000), "Max training iteration")
         ("use_pos_tags,P", "make POS tags visible to parser")
         ("use_bilstm,B", "use bilstm for buffer")
         ("use_treelstm,R", "use treelstm for subtree in stack")
@@ -108,6 +109,8 @@ int main(int argc, char** argv) {
   Opt.USE_TREELSTM = conf.count("use_treelstm");
   Opt.GLOBAL_LOSS = conf.count("global_loss");
   Opt.beam_size = conf["beam_size"].as<unsigned>();
+  Opt.max_itr = conf["max_itr"].as<unsigned>();
+  cerr << "Max training iteration: " << Opt.max_itr << endl;
   if (Opt.USE_BILSTM)
     cerr << "Using bilstm for buffer." << endl;
   if (Opt.USE_TREELSTM)

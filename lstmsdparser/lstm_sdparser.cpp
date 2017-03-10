@@ -18,8 +18,8 @@ std::string StrToLower(const std::string s){
 
 //struct LSTMParser {
 
-LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 0, "list-tree", 
-                                "", "4000", true, false, false, false}) {}
+LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 0, 10000, 
+                              "list-tree", "", "4000", true, false, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -2003,13 +2003,13 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
     double right = 0;
     double llh = 0;
     bool first = true;
-    int iter = -1;
+    int iter = 0;
     //time_t time_start = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     time_t time_start = time(NULL);
     std::string t_s(asctime(localtime(&time_start))); 
     //cerr << "TRAINING STARTED AT: " << asctime(localtime(&time_start)) << endl;
     cerr << "TRAINING STARTED AT: " << t_s.substr(0, t_s.size() - 1) << endl;
-    while(!requested_stop) {
+    while((!requested_stop) && (iter < Opt.max_itr)) {
       ++iter;
       for (unsigned sii = 0; sii < status_every_i_iterations; ++sii) {
           if (si == corpus.nsentences) {
