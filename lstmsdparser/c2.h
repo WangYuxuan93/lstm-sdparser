@@ -97,6 +97,61 @@ void set_transition_system(std::string system){
   transition_system = system;
 }
 
+inline void split2(const std::string& source, const char& sep, 
+    std::vector<std::string>& ret, int maxsplit=-1) {
+  std::string str(source);
+  int numsplit = 0;
+  int len = str.size();
+  size_t pos;
+  for (pos = 0; pos < str.size() && (str[pos] == sep); ++ pos);
+  str = str.substr(pos);
+
+  ret.clear();
+  while (str.size() > 0) {
+    pos = std::string::npos;
+
+    for (pos = 0; pos < str.size() && (str[pos] != sep); ++ pos);
+
+    if (pos == str.size()) {
+      pos = std::string::npos;
+    }
+
+    if (maxsplit >= 0 && numsplit < maxsplit) {
+      ret.push_back(str.substr(0, pos));
+      ++ numsplit;
+    } else if (maxsplit >= 0 && numsplit == maxsplit) {
+      ret.push_back(str);
+      ++ numsplit;
+    } else if (maxsplit == -1) {
+      ret.push_back(str.substr(0, pos));
+      ++ numsplit;
+    }
+
+    if (pos == std::string::npos) {
+      str = "";
+    } else {
+      for (; pos < str.size() && (str[pos] == sep); ++ pos);
+      str = str.substr(pos);
+    }
+  }
+}
+
+/**
+ * Return a list of words of string str, the word are separated by
+ * separator.
+ *
+ *  @param  str         std::string     the string
+ *  @param  sep         char            the separator
+ *  @param  maxsplit    std::string     the sep upperbound
+ *  @return             std::vector<std::string> the words
+ */
+inline std::vector<std::string> split2(const std::string& source, const char& sep, int maxsplit = -1) {
+  std::vector<std::string> ret;
+  split2(source, sep, ret, maxsplit);
+  return ret;
+}
+
+
 inline void split(const std::string& source, std::vector<std::string>& ret,
     int maxsplit=-1) {
   std::string str(source);
@@ -200,11 +255,11 @@ inline void load_conll_file(std::string file){
     ReplaceStringInPlace(lineS, "-RRB-", "_RRB_");
     ReplaceStringInPlace(lineS, "-LRB-", "_LRB_");
     if (lineS.empty()) {
-      /*if (is_tree) std::cerr << "is tree" << std::endl;
+      if (is_tree) std::cerr << "is tree" << std::endl;
       for (int j = 0; j < graph.size(); ++j){
         std::cerr << j << "\t" << intToWords[current_sent[j]] << "\t" << intToPos[current_sent_pos[j]]
         << "\t" << graph[j].back().first << "\t" << graph[j].back().second << std::endl;
-      }*/
+      }
 
       std::vector<std::string> gold_acts;
       system->get_actions(graph, gold_acts);
@@ -248,7 +303,7 @@ inline void load_conll_file(std::string file){
       // one line in each sentence may look like:
       // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
       // read the every line
-      std::vector<std::string> items = split(lineS);
+      std::vector<std::string> items = split2(lineS, '\t');
       unsigned id = std::atoi(items[0].c_str()) - 1;
       std::string word = items[1];
       std::string pos = items[3];
@@ -420,7 +475,7 @@ inline void load_conll_fileDev(std::string file){
       // one line in each sentence may look like:
       // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
       // read the every line
-      std::vector<std::string> items = split(lineS);
+      std::vector<std::string> items = split2(lineS,'\t');
       unsigned id = std::atoi(items[0].c_str()) - 1;
       std::string word = items[1];
       std::string pos = items[3];
