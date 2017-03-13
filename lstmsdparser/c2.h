@@ -255,11 +255,11 @@ inline void load_conll_file(std::string file){
     ReplaceStringInPlace(lineS, "-RRB-", "_RRB_");
     ReplaceStringInPlace(lineS, "-LRB-", "_LRB_");
     if (lineS.empty()) {
-      if (is_tree) std::cerr << "is tree" << std::endl;
+      /*if (is_tree) std::cerr << "is tree" << std::endl;
       for (int j = 0; j < graph.size(); ++j){
         std::cerr << j << "\t" << intToWords[current_sent[j]] << "\t" << intToPos[current_sent_pos[j]]
         << "\t" << graph[j].back().first << "\t" << graph[j].back().second << std::endl;
-      }
+      }*/
 
       std::vector<std::string> gold_acts;
       system->get_actions(graph, gold_acts);
@@ -546,7 +546,7 @@ inline void load_conll_fileDev(std::string file){
   }
       
   actionsFile.close();
-  std::cerr << "tree / total = " << nsentences - ngraph << " / " << nsentences << std::endl;
+  std::cerr << "tree / total = " << nsentencesDev - ngraph << " / " << nsentencesDev << std::endl;
   if (DEBUG){
     std::cerr<<"done"<<"\n";
     for (auto a: actions)
