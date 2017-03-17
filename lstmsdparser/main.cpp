@@ -176,10 +176,15 @@ int main(int argc, char** argv) {
   //parser -> set_options(Opt);
 
   parser->DEBUG = true;
-  if (conf.count("model")){
+  if (conf.count("model") && conf.count("dev_data")){
     parser -> set_options(Opt); // only for test
     parser -> load(conf["model"].as<string>(), conf["training_data"].as<string>(), 
                   conf["words"].as<string>(), conf["dev_data"].as<string>() );
+  }
+  else if (conf.count("model") && conf.count("test_data")){
+    parser -> set_options(Opt); // only for test
+    parser -> load(conf["model"].as<string>(), conf["training_data"].as<string>(), 
+                  conf["words"].as<string>());
   }
   else{
     parser -> set_options(Opt);
@@ -202,7 +207,7 @@ int main(int argc, char** argv) {
     parser->train(fname, unk_strategy, unk_prob);
   } // should do training?
   
-  if (true) { // do test evaluation
+  if (conf.count("dev_data")) { // do test evaluation
     parser->predict_dev(); // id : 22 146 296 114 21
     /*
     std::vector<std::vector<string>> hyp;
@@ -218,6 +223,9 @@ int main(int argc, char** argv) {
         cerr << hyp[i][j] << " ";
       cerr << endl;
     }*/
+  }
+  if (conf.count("test_data")){
+    parser->test(conf["test_data"].as<string>());
   }
   //for (unsigned i = 0; i < corpus.actions.size(); ++i) {
     //cerr << corpus.actions[i] << '\t' << parser.p_r->values[i].transpose() << endl;

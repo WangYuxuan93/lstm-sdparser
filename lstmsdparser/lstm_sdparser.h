@@ -340,6 +340,8 @@ public:
 
   void train(const std::string fname, const unsigned unk_strategy, const double unk_prob);
 
+  void test(std::string test_data_file);
+
   void predict_dev();
 
   void predict(std::vector<std::vector<string>> &hyp, const std::vector<std::string> & words,

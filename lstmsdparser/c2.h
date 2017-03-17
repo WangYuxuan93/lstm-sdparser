@@ -36,6 +36,11 @@ public:
   std::map<int,std::vector<std::string>> sentencesStrDev;
   unsigned nsentencesDev;
 
+  std::map<int,std::vector<unsigned>> sentencesTest;
+  std::map<int,std::vector<unsigned>> sentencesPosTest;
+  std::map<int,std::vector<std::string>> sentencesStrTest;
+  unsigned nsentencesTest;
+
   unsigned nsentences;
   unsigned nwords;
   unsigned nactions;
@@ -547,6 +552,114 @@ inline void load_conll_fileDev(std::string file){
       
   actionsFile.close();
   std::cerr << "tree / total = " << nsentencesDev - ngraph << " / " << nsentencesDev << std::endl;
+  if (DEBUG){
+    std::cerr<<"done"<<"\n";
+    for (auto a: actions)
+      std::cerr<<a<<"\n";
+  }
+  nactions=actions.size();
+  if (DEBUG){
+    std::cerr<<"nactions:"<<nactions<<"\n";
+    std::cerr<<"nwords:"<<nwords<<"\n";
+    for (unsigned i=0;i<npos;i++)
+      std::cerr<<i<<":"<<intToPos[i]<<"\n";
+  }
+  nactions=actions.size();
+}
+
+inline void load_conll_fileTest(std::string file){
+  std::ifstream actionsFile(file);
+  //correct_act_sent=new vector<vector<unsigned>>();
+  if (!actionsFile){
+    std::cerr << "File does not exist!" << std::endl;
+  }
+  std::string lineS;
+
+  assert(maxPos > 1);
+  assert(max > 3);
+  int sentence=0;
+  std::vector<unsigned> current_sent;
+  std::vector<unsigned> current_sent_pos;
+  std::vector<std::string> current_sent_str;
+  std::map<int, std::vector<std::pair<int, std::string>>> graph;
+  while (getline(actionsFile, lineS)){
+    //istringstream iss(line);
+    //string lineS;
+    //iss>>lineS;
+    ReplaceStringInPlace(lineS, "-RRB-", "_RRB_");
+    ReplaceStringInPlace(lineS, "-LRB-", "_LRB_");
+    if (lineS.empty()) {
+      current_sent.push_back(wordsToInt["ROOT"]);
+      current_sent_pos.push_back(posToInt["ROOT"]);
+      current_sent_str.push_back("");
+      sentencesTest[sentence] = current_sent;
+      sentencesPosTest[sentence] = current_sent_pos;
+      sentencesStrTest[sentence] = current_sent_str;    
+      sentence++;
+      nsentencesTest = sentence;
+
+      /*if (is_tree) std::cerr << "is tree" << std::endl;
+      for (int j = 0; j < graph.size(); ++j){
+        std::cerr << j << "\t" << intToWords[current_sent[j]] << "\t" << intToPos[current_sent_pos[j]]
+        << "\t" << graph[j].back().first << "\t" << graph[j].back().second << std::endl;
+      }*/
+      
+      current_sent.clear();
+      current_sent_pos.clear();
+      current_sent_str.clear();
+    } else {
+      //stack and buffer, for now, leave it like this.
+      // one line in each sentence may look like:
+      // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
+      // read the every line
+      std::vector<std::string> items = split2(lineS,'\t');
+      unsigned id = std::atoi(items[0].c_str()) - 1;
+      std::string word = items[1];
+      std::string pos = items[3];
+      //unsigned head = std::atoi(items[6].c_str()) - 1;
+      //std::string rel = items[7];
+      // new POS tag from test data will not be added
+      /*if (posToInt[pos] == 0) {
+        posToInt[pos] = maxPos;
+        intToPos[maxPos] = pos;
+        npos = maxPos;
+        maxPos++;
+      }*/
+      // add an empty string for any token except OOVs (it is easy to 
+      // recover the surface form of non-OOV using intToWords(id)).
+      current_sent_str.push_back("");
+      // OOV word
+      if (wordsToInt[word] == 0) {
+        if (USE_SPELLING) {
+          max = nwords + 1;
+          wordsToInt[word] = max;
+          intToWords[max] = word;
+          nwords = max;
+        } else {
+          // save the surface form of this OOV before overwriting it.
+          current_sent_str[current_sent_str.size()-1] = word;
+          word = Corpus::UNK;
+        }
+      }
+      current_sent.push_back(wordsToInt[word]);
+      current_sent_pos.push_back(posToInt[pos]);
+    }
+  }
+
+  // Add the last sentence.
+  if (current_sent.size() > 0) {
+    current_sent.push_back(wordsToInt["ROOT"]);
+    current_sent_pos.push_back(posToInt["ROOT"]);
+    current_sent_str.push_back("");
+    sentencesTest[sentence] = current_sent;
+    sentencesPosTest[sentence] = current_sent_pos;
+    sentencesStrTest[sentence] = current_sent_str;    
+    sentence++;
+    nsentencesTest = sentence;
+  }
+      
+  actionsFile.close();
+  std::cerr << "test sentence = " << nsentencesTest << std::endl;
   if (DEBUG){
     std::cerr<<"done"<<"\n";
     for (auto a: actions)

@@ -2127,6 +2127,59 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
     }//while
 }
 
+void LSTMParser::test(string test_data_file) {
+    double right = 0;
+    if (DEBUG)
+      cerr << "Loading test data from " << test_data_file << endl;
+    corpus.load_conll_fileTest(test_data_file);
+    std::vector<std::vector<std::vector<string>>> hyps;
+    auto t_start = std::chrono::high_resolution_clock::now();
+    unsigned corpus_size = corpus.nsentencesTest;
+
+    int miss_head = 0;
+
+    for (unsigned sii = 0; sii < corpus_size; ++sii) {
+      const std::vector<unsigned>& sentence = corpus.sentencesTest[sii];
+      const std::vector<unsigned>& sentencePos = corpus.sentencesPosTest[sii];
+      const std::vector<string>& sentenceUnkStr = corpus.sentencesStrTest[sii]; 
+      std::vector<unsigned> tsentence=sentence;
+      for (auto& w : tsentence)
+        if (training_vocab.count(w) == 0) w = kUNK;
+      std::vector<unsigned> pred;
+      std::vector<std::vector<string>> cand;
+      std::vector<Expression> word_rep; // word representations
+      Expression act_rep; // final action representation
+      //cerr<<"compute action" << endl;
+
+      {
+      ComputationGraph cg;
+      if (Opt.beam_size == 0)
+          pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                              corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
+      else
+          pred = log_prob_parser_beam(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                                    corpus.actions, corpus.intToWords, &right, Opt.beam_size, dg);
+      }
+      std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
+      if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+            miss_head++;
+            cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
+      }
+      hyps.push_back(hyp);
+
+      if (sii%100 == 0)
+         cerr << "sentence: " << sii << endl;
+      //cerr<<"write to file" <<endl;
+      output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
+      //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
+      //total_heads += sentence.size() - 1;
+    }
+    
+    auto t_end = std::chrono::high_resolution_clock::now();
+      cerr << "TEST\t[" << corpus_size << " sents in "  
+      << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms]" << endl;
+}
+
 void LSTMParser::predict_dev() {
     double llh = 0;
     double trs = 0;
