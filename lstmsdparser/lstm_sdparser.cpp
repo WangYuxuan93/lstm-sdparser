@@ -2170,7 +2170,7 @@ void LSTMParser::test(string test_data_file) {
       if (sii%100 == 0)
          cerr << "sentence: " << sii << endl;
       //cerr<<"write to file" <<endl;
-      output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
+      output_conll(sentence, sentencePos, sentenceUnkStr, hyp, sii);
       //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
       //total_heads += sentence.size() - 1;
     }
@@ -2345,6 +2345,7 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
                 (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() == 0 &&
                 intToWords.find(sentence[i]) != intToWords.end())));
+
         string wit = (sentenceUnkStrings[i].size() > 0)? 
         sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
         auto pit = intToPos.find(pos[i]);
@@ -2369,6 +2370,48 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
   cout << endl;
 }
 
+//for test data output
+void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
+                  const vector<string>& sentenceUnkStrings, 
+                  const vector<vector<string>>& hyp,
+                  const int nsent) {
+    const map<unsigned, string>& intToWords = corpus.intToWords;
+    const map<unsigned, string>& intToPos = corpus.intToPos;
+    const vector<string>& Lemma = corpus.sentencesLemmaTest[nsent];
+    const vector<string>& XPos = corpus.sentencesXPosTest[nsent];
+    const vector<string>& Feat = corpus.sentencesFeatTest[nsent];
+
+    for (unsigned i = 0; i < (sentence.size()-1); ++i) {
+        auto index = i + 1;
+        assert(i < sentenceUnkStrings.size() && 
+            ((sentence[i] == corpus.get_or_add_word(cpyp::Corpus::UNK) &&
+                sentenceUnkStrings[i].size() > 0) ||
+                (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
+                sentenceUnkStrings[i].size() == 0 &&
+                intToWords.find(sentence[i]) != intToWords.end())));
+        string wit = (sentenceUnkStrings[i].size() > 0)? 
+        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
+        auto pit = intToPos.find(pos[i]);
+        for (unsigned j = 0; j < sentence.size() ; ++j){
+            if (hyp[j][i] != ltp::lstmsdparser::REL_NULL){
+                auto hyp_head = j + 1;
+                if (hyp_head == sentence.size()) hyp_head = 0;
+                auto hyp_rel = hyp[j][i];
+                cout << index << '\t'       // 1. ID 
+                    << wit << '\t'         // 2. FORM
+                    << Lemma[i] << '\t'         // 3. LEMMA 
+                    << pit->second << '\t'         // 4. UPOSTAG 
+                    << XPos[i] << '\t'         // 5. XPOSTAG
+                    << Feat[i] << '\t'         // 6. FEATS
+                    << hyp_head << '\t'    // 7. HEAD
+                    << hyp_rel << '\t'     // 8. DEPREL
+                    << "_" << '\t'         // 9. PHEAD
+                    << "_" << endl;        // 10. PDEPREL
+            }
+        }
+  }
+  cout << endl;
+}
 
 map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& refs, const vector<vector<vector<string>>>& hyps) {
 

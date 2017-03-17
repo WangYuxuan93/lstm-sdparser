@@ -39,6 +39,9 @@ public:
   std::map<int,std::vector<unsigned>> sentencesTest;
   std::map<int,std::vector<unsigned>> sentencesPosTest;
   std::map<int,std::vector<std::string>> sentencesStrTest;
+  std::map<int,std::vector<std::string>> sentencesLemmaTest;
+  std::map<int,std::vector<std::string>> sentencesXPosTest;
+  std::map<int,std::vector<std::string>> sentencesFeatTest;
   unsigned nsentencesTest;
 
   unsigned nsentences;
@@ -581,7 +584,9 @@ inline void load_conll_fileTest(std::string file){
   std::vector<unsigned> current_sent;
   std::vector<unsigned> current_sent_pos;
   std::vector<std::string> current_sent_str;
-  std::map<int, std::vector<std::pair<int, std::string>>> graph;
+  std::vector<std::string> current_sent_lemma;
+  std::vector<std::string> current_sent_xpos;
+  std::vector<std::string> current_sent_feat;
   while (getline(actionsFile, lineS)){
     //istringstream iss(line);
     //string lineS;
@@ -595,6 +600,9 @@ inline void load_conll_fileTest(std::string file){
       sentencesTest[sentence] = current_sent;
       sentencesPosTest[sentence] = current_sent_pos;
       sentencesStrTest[sentence] = current_sent_str;    
+      sentencesLemmaTest[sentence] = current_sent_lemma;  
+      sentencesXPosTest[sentence] = current_sent_xpos;  
+      sentencesFeatTest[sentence] = current_sent_feat;  
       sentence++;
       nsentencesTest = sentence;
 
@@ -607,6 +615,9 @@ inline void load_conll_fileTest(std::string file){
       current_sent.clear();
       current_sent_pos.clear();
       current_sent_str.clear();
+      current_sent_lemma.clear();
+      current_sent_xpos.clear();
+      current_sent_feat.clear();
     } else {
       //stack and buffer, for now, leave it like this.
       // one line in each sentence may look like:
@@ -616,6 +627,9 @@ inline void load_conll_fileTest(std::string file){
       unsigned id = std::atoi(items[0].c_str()) - 1;
       std::string word = items[1];
       std::string pos = items[3];
+      current_sent_lemma.push_back(items[2]);
+      current_sent_xpos.push_back(items[4]);
+      current_sent_feat.push_back(items[5]);
       //unsigned head = std::atoi(items[6].c_str()) - 1;
       //std::string rel = items[7];
       // new POS tag from test data will not be added
@@ -653,7 +667,10 @@ inline void load_conll_fileTest(std::string file){
     current_sent_str.push_back("");
     sentencesTest[sentence] = current_sent;
     sentencesPosTest[sentence] = current_sent_pos;
-    sentencesStrTest[sentence] = current_sent_str;    
+    sentencesStrTest[sentence] = current_sent_str;
+    sentencesLemmaTest[sentence] = current_sent_lemma;  
+    sentencesXPosTest[sentence] = current_sent_xpos;  
+    sentencesFeatTest[sentence] = current_sent_feat;     
     sentence++;
     nsentencesTest = sentence;
   }

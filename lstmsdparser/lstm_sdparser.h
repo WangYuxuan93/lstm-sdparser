@@ -353,6 +353,11 @@ public:
                   //const map<unsigned, string>& intToPos, 
                   const vector<vector<string>>& hyp);
 
+  void output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
+                  const vector<string>& sentenceUnkStrings,  
+                  const vector<vector<string>>& hyp,
+                  const int nsent);
+
   map<string, double> evaluate(const std::vector<std::vector<std::vector<string>>>& refs, const std::vector<std::vector<std::vector<string>>>& hyps);
 };
 
