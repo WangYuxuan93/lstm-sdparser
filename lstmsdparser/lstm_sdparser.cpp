@@ -2380,6 +2380,7 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
     const vector<string>& Lemma = corpus.sentencesLemmaTest[nsent];
     const vector<string>& XPos = corpus.sentencesXPosTest[nsent];
     const vector<string>& Feat = corpus.sentencesFeatTest[nsent];
+    const vector<string>& Mult = corpus.sentencesMultTest[nsent];
 
     for (unsigned i = 0; i < (sentence.size()-1); ++i) {
         auto index = i + 1;
@@ -2394,6 +2395,7 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
         auto pit = intToPos.find(pos[i]);
         for (unsigned j = 0; j < sentence.size() ; ++j){
             if (hyp[j][i] != ltp::lstmsdparser::REL_NULL){
+                if (Mult[i].length() > 0) cout << Mult[i] << endl;
                 auto hyp_head = j + 1;
                 if (hyp_head == sentence.size()) hyp_head = 0;
                 auto hyp_rel = hyp[j][i];

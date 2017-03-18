@@ -42,6 +42,7 @@ public:
   std::map<int,std::vector<std::string>> sentencesLemmaTest;
   std::map<int,std::vector<std::string>> sentencesXPosTest;
   std::map<int,std::vector<std::string>> sentencesFeatTest;
+  std::map<int,std::vector<std::string>> sentencesMultTest;
   unsigned nsentencesTest;
 
   unsigned nsentences;
@@ -587,6 +588,7 @@ inline void load_conll_fileTest(std::string file){
   std::vector<std::string> current_sent_lemma;
   std::vector<std::string> current_sent_xpos;
   std::vector<std::string> current_sent_feat;
+  std::vector<std::string> current_sent_mult; // for multiword like "1-2"
   while (getline(actionsFile, lineS)){
     //istringstream iss(line);
     //string lineS;
@@ -602,7 +604,8 @@ inline void load_conll_fileTest(std::string file){
       sentencesStrTest[sentence] = current_sent_str;    
       sentencesLemmaTest[sentence] = current_sent_lemma;  
       sentencesXPosTest[sentence] = current_sent_xpos;  
-      sentencesFeatTest[sentence] = current_sent_feat;  
+      sentencesFeatTest[sentence] = current_sent_feat;
+      sentencesMultTest[sentence] = current_sent_mult;
       sentence++;
       nsentencesTest = sentence;
 
@@ -618,12 +621,21 @@ inline void load_conll_fileTest(std::string file){
       current_sent_lemma.clear();
       current_sent_xpos.clear();
       current_sent_feat.clear();
+      current_sent_mult.clear();
     } else {
       //stack and buffer, for now, leave it like this.
       // one line in each sentence may look like:
       // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
       // read the every line
       std::vector<std::string> items = split2(lineS,'\t');
+      current_sent_mult.push_back("");
+      std::size_t found_mult = items[0].find('-');  
+      if (found_mult!=std::string::npos){
+        unsigned first_id = std::atoi(items[0].substr(0, found_mult).c_str()) - 1;
+        current_sent_mult[first_id] = lineS;
+        //std::cerr << "id:" << first_id << "line:" << lineS << std::endl;
+        continue;
+      }
       unsigned id = std::atoi(items[0].c_str()) - 1;
       std::string word = items[1];
       std::string pos = items[3];
@@ -632,13 +644,13 @@ inline void load_conll_fileTest(std::string file){
       current_sent_feat.push_back(items[5]);
       //unsigned head = std::atoi(items[6].c_str()) - 1;
       //std::string rel = items[7];
-      // new POS tag from test data will not be added
-      /*if (posToInt[pos] == 0) {
+      // new POS tag
+      if (posToInt[pos] == 0) {
         posToInt[pos] = maxPos;
         intToPos[maxPos] = pos;
         npos = maxPos;
         maxPos++;
-      }*/
+      }
       // add an empty string for any token except OOVs (it is easy to 
       // recover the surface form of non-OOV using intToWords(id)).
       current_sent_str.push_back("");
@@ -670,7 +682,8 @@ inline void load_conll_fileTest(std::string file){
     sentencesStrTest[sentence] = current_sent_str;
     sentencesLemmaTest[sentence] = current_sent_lemma;  
     sentencesXPosTest[sentence] = current_sent_xpos;  
-    sentencesFeatTest[sentence] = current_sent_feat;     
+    sentencesFeatTest[sentence] = current_sent_feat;
+    sentencesMultTest[sentence] = current_sent_mult;     
     sentence++;
     nsentencesTest = sentence;
   }
