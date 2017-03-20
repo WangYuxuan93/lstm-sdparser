@@ -22,7 +22,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     ("training_data,T", po::value<string>(), "List of Transitions - Training corpus")
     ("dev_data,d", po::value<string>(), "Development corpus")
     ("test_data,p", po::value<string>(), "Test corpus")
-    ("transition_system,s", po::value<string>()->default_value("list-tree"), "Transition system(swap - arcstandard, list-tree - listbased tree, list-graph - list-graph listbased graph)")
+    ("transition_system,s", po::value<string>()->default_value("list-graph"), "Transition system(swap - Arc-Standard, list-tree - List-Based tree, list-graph - List-Based graph)")
     ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
     ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
     ("model,m", po::value<string>(), "Load saved model from this file")
