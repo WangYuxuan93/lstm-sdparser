@@ -312,7 +312,10 @@ inline void load_conll_file(std::string file){
       // one line in each sentence may look like:
       // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
       // read the every line
+      if (lineS[0] == '#') continue;
       std::vector<std::string> items = split2(lineS, '\t');
+      if (items[0].find('-') != std::string::npos) continue;
+      if (items[0].find('.') != std::string::npos) continue;
       unsigned id = std::atoi(items[0].c_str()) - 1;
       std::string word = items[1];
       std::string pos = items[3];
@@ -484,7 +487,10 @@ inline void load_conll_fileDev(std::string file){
       // one line in each sentence may look like:
       // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
       // read the every line
+      if (lineS[0] == '#') continue;
       std::vector<std::string> items = split2(lineS,'\t');
+      if (items[0].find('-') != std::string::npos) continue;
+      if (items[0].find('.') != std::string::npos) continue;
       unsigned id = std::atoi(items[0].c_str()) - 1;
       std::string word = items[1];
       std::string pos = items[3];
@@ -627,7 +633,9 @@ inline void load_conll_fileTest(std::string file){
       // one line in each sentence may look like:
       // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
       // read the every line
+      if (lineS[0] == '#') continue;
       std::vector<std::string> items = split2(lineS,'\t');
+      if (items[0].find('.') != std::string::npos) continue;
       current_sent_mult.push_back("");
       std::size_t found_mult = items[0].find('-');  
       if (found_mult!=std::string::npos){
