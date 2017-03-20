@@ -1,5 +1,5 @@
-#ifndef __LTP_LSTMSDPARSER_SWAPBASED_H__
-#define __LTP_LSTMSDPARSER_SWAPBASED_H__
+#ifndef __LSTMSDPARSER_SWAPBASED_H__
+#define __LSTMSDPARSER_SWAPBASED_H__
 
 #include "lstmsdparser/system.h"
 
@@ -30,4 +30,4 @@ public:
 };
 
 
-#endif  //  end for __LTP_LSTMSDPARSER_SWAPBASED_H__
+#endif  //  end for __LSTMSDPARSER_SWAPBASED_H__

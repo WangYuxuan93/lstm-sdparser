@@ -3,7 +3,7 @@
 #include <cstring>
 #include "lstmsdparser/lstm_sdparser.h"
 
-using ltp::lstmsdparser::LSTMParser;
+using lstmsdparser::LSTMParser;
 //namespace po = boost::program_options;
 
 cpyp::Corpus corpus;
@@ -19,35 +19,33 @@ namespace po = boost::program_options;
 void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
   po::options_description opts("Configuration options");
   opts.add_options()
-        ("training_data,T", po::value<string>(), "List of Transitions - Training corpus")
-        ("dev_data,d", po::value<string>(), "Development corpus")
-        ("test_data,p", po::value<string>(), "Test corpus")
-        ("transition_system,s", po::value<string>()->default_value("list-tree"), "Transition system(swap - arcstandard, list-tree - listbased tree, list-graph - list-graph listbased graph)")
-        ("data_type,k", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook)")
-        ("dynet_seed", po::value<string>(), "Dynet seed for initialization")
-        ("dynet_mem", po::value<string>()->default_value("4000"), "Dynet memory size (MB) for initialization")
-        ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
-        ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
-        ("model,m", po::value<string>(), "Load saved model from this file")
-        ("model_dir", po::value<string>()->default_value(""), "Directory of model")
-        ("max_itr", po::value<unsigned>()->default_value(10000), "Max training iteration")
-        ("use_pos_tags,P", "make POS tags visible to parser")
-        ("use_bilstm,B", "use bilstm for buffer")
-        ("use_treelstm,R", "use treelstm for subtree in stack")
-        ("beam_size,b", po::value<unsigned>()->default_value(0), "beam size")
-        ("global_loss,G", "train using the global loss function (Andor et al)")
-        ("layers", po::value<unsigned>()->default_value(2), "number of LSTM layers")
-        ("action_dim", po::value<unsigned>()->default_value(50), "action embedding size")
-        ("input_dim", po::value<unsigned>()->default_value(100), "input embedding size")
-        ("hidden_dim", po::value<unsigned>()->default_value(200), "hidden dimension")
-        ("bilstm_hidden_dim", po::value<unsigned>()->default_value(100), "bilstm hidden dimension")
-        ("pretrained_dim", po::value<unsigned>()->default_value(100), "pretrained input dimension")
-        ("pos_dim", po::value<unsigned>()->default_value(50), "POS dimension")
-        ("rel_dim", po::value<unsigned>()->default_value(50), "relation dimension")
-        ("lstm_input_dim", po::value<unsigned>()->default_value(200), "LSTM input dimension")
-        ("train,t", "Should training be run?")
-        ("words,w", po::value<string>()->default_value(""), "Pretrained word embeddings")
-        ("help,h", "Help");
+    ("training_data,T", po::value<string>(), "List of Transitions - Training corpus")
+    ("dev_data,d", po::value<string>(), "Development corpus")
+    ("test_data,p", po::value<string>(), "Test corpus")
+    ("transition_system,s", po::value<string>()->default_value("list-tree"), "Transition system(swap - arcstandard, list-tree - listbased tree, list-graph - list-graph listbased graph)")
+    ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
+    ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
+    ("model,m", po::value<string>(), "Load saved model from this file")
+    ("use_pos_tags,P", "make POS tags visible to parser")
+    ("use_bilstm,B", "use bilstm for buffer")
+    ("use_treelstm,R", "use treelstm for subtree in stack")
+    ("data_type", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook), only for distinguishing model name")
+    ("dynet_seed", po::value<string>(), "Dynet seed for initialization, random initialization if not specified")
+    ("dynet_mem", po::value<string>()->default_value("4000"), "Dynet memory size (MB) for initialization")
+    ("model_dir", po::value<string>()->default_value(""), "Directory of model")
+    ("max_itr", po::value<unsigned>()->default_value(10000), "Max training iteration")
+    ("layers", po::value<unsigned>()->default_value(2), "number of LSTM layers")
+    ("action_dim", po::value<unsigned>()->default_value(50), "action embedding size")
+    ("input_dim", po::value<unsigned>()->default_value(100), "input word embedding size (updated while training)")
+    ("hidden_dim", po::value<unsigned>()->default_value(200), "lstm hidden dimension")
+    ("bilstm_hidden_dim", po::value<unsigned>()->default_value(100), "bilstm hidden dimension")
+    ("pretrained_dim", po::value<unsigned>()->default_value(100), "pretrained input word dimension")
+    ("pos_dim", po::value<unsigned>()->default_value(50), "POS dimension")
+    ("rel_dim", po::value<unsigned>()->default_value(50), "relation dimension")
+    ("lstm_input_dim", po::value<unsigned>()->default_value(200), "LSTM input dimension")
+    ("train,t", "Should training be run?")
+    ("words,w", po::value<string>()->default_value(""), "Pretrained word embeddings")
+    ("help,h", "Help");
   po::options_description dcmdline_options;
   dcmdline_options.add(opts);
   po::store(parse_command_line(argc, argv, dcmdline_options), *conf);
@@ -62,67 +60,24 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
 }
 
 int main(int argc, char** argv) {
-  /*cpyp::Corpus corpus1,corpus2;
-  corpus1.set_transition_system("list-tree");
-  corpus2.set_transition_system("list1");
-  cerr << "start loading" << endl;
-  corpus1.load_conll_file("/mnt/hgfs/share/oracle/en-ud-test.conll");
-  
-  corpus2.load_conll_file("/mnt/hgfs/share/oracle/en-ud-test.conll");
-  cerr << "finish loading" << endl;
-  cerr << corpus1.nsentences << " " <<corpus2.nsentences << endl;
-  int diff;
-  for (int i = 0; i < corpus1.nsentences; ++i){
-    std::vector<unsigned> a1 = corpus1.correct_act_sent[i];
-    std::vector<unsigned> a2 = corpus2.correct_act_sent[i];
-    bool flag = false;
-    for (int j = 0; j < a1.size(); ++j){
-      if (a1[j] != a2[j])
-        flag = true;
-    }
-    if (flag){
-      ++diff;
-      cerr << "diff id: " << i << endl;
-      for (auto w : corpus1.sentences[i])
-        cerr << corpus1.intToWords[w] << endl;
-      cerr << endl << endl;
-      for (auto a : a1)
-        std::cerr << corpus1.actions[a] << ",";
-      cerr << endl << endl;
-      for (auto a : a2)
-        std::cerr << corpus2.actions[a] << ",";
-      cerr << endl;
-    }
-  }
-  cerr << "diff num: " << diff << endl;*/
-  //dynet::Initialize(argc, argv);
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
   cerr << endl;
   
   po::variables_map conf;
   InitCommandLine(argc, argv, &conf);
-  //ltp::lstmsdparser::Sizes System_size;
-  ltp::lstmsdparser::Options Opt;
+  lstmsdparser::Options Opt;
   Opt.USE_POS = conf.count("use_pos_tags");
   Opt.USE_BILSTM = conf.count("use_bilstm");
   Opt.USE_TREELSTM = conf.count("use_treelstm");
-  Opt.GLOBAL_LOSS = conf.count("global_loss");
-  Opt.beam_size = conf["beam_size"].as<unsigned>();
   Opt.max_itr = conf["max_itr"].as<unsigned>();
   cerr << "Max training iteration: " << Opt.max_itr << endl;
   if (Opt.USE_BILSTM)
     cerr << "Using bilstm for buffer." << endl;
   if (Opt.USE_TREELSTM)
     cerr << "Using treelstm for subtree in stack." << endl;
-  if (Opt.beam_size > 0)
-    cerr << "Using beam search, beam size: " << Opt.beam_size << endl;
-  if (Opt.GLOBAL_LOSS)
-    cerr << "Using global loss function." << endl;
-
   Opt.transition_system = conf["transition_system"].as<string>();
   cerr << "Transition System: " << Opt.transition_system << endl;
-
   Opt.LAYERS = conf["layers"].as<unsigned>();
   Opt.INPUT_DIM = conf["input_dim"].as<unsigned>();
   Opt.PRETRAINED_DIM = conf["pretrained_dim"].as<unsigned>();
@@ -138,10 +93,7 @@ int main(int argc, char** argv) {
   if (conf.count("dynet_mem")){
     Opt.dynet_mem = conf["dynet_mem"].as<string>();
   }
-
   const unsigned unk_strategy = conf["unk_strategy"].as<unsigned>();
-
-
   cerr << "Unknown word strategy: ";
   if (unk_strategy == 1) {
     cerr << "STOCHASTIC REPLACEMENT\n";
@@ -153,7 +105,6 @@ int main(int argc, char** argv) {
   ostringstream os;
   os << conf["model_dir"].as<string>()
     << "parser_" << Opt.transition_system
-    << '_' << (Opt.GLOBAL_LOSS ? "glb" : "loc")
     << '_' << (Opt.USE_POS ? "pos" : "nopos")
     << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
     << '_' << (Opt.USE_TREELSTM ? "tr" : "notr")
@@ -171,7 +122,6 @@ int main(int argc, char** argv) {
   const string fname = os.str();
   cerr << "Writing parameters to file: " << fname << endl;
 
-  //Model model;
   LSTMParser *parser = new LSTMParser();
   //parser -> set_options(Opt);
 
@@ -191,16 +141,8 @@ int main(int argc, char** argv) {
     parser -> load("", conf["training_data"].as<string>(), 
                   conf["words"].as<string>(), conf["dev_data"].as<string>() );
   }
-  //parser -> get_dynamic_infos();
-  /*
-  if (conf.count("model")) {
-    ifstream in(conf["model"].as<string>().c_str());
-    boost::archive::text_iarchive ia(in);
-    ia >> model;
-  }*/
 
   // OOV words will be replaced by UNK tokens
-  
   //TRAINING
   
   if (conf.count("train")) {
@@ -208,28 +150,10 @@ int main(int argc, char** argv) {
   } // should do training?
   
   if (conf.count("dev_data")) { // do test evaluation
-    parser->predict_dev(); // id : 22 146 296 114 21
-    /*
-    std::vector<std::vector<string>> hyp;
-    string word[]={"我","是","中国","学生","ROOT"}; // id : 22 146 296 114 21
-    size_t w_count=sizeof(word)/sizeof(string);
-    string pos[]={"NN","VE","JJ","NN","ROOT"};
-    size_t p_count=sizeof(word)/sizeof(string);
-    std::vector<std::string> words(word,word+w_count);
-    std::vector<std::string> postags(pos,pos+p_count);
-    parser -> predict(hyp, words, postags);
-    for (int i = 0; i < hyp.size(); i++){
-      for (int j = 0; j < hyp.size(); j++)
-        cerr << hyp[i][j] << " ";
-      cerr << endl;
-    }*/
+    parser->predict_dev();
   }
   if (conf.count("test_data")){
     parser->test(conf["test_data"].as<string>());
   }
-  //for (unsigned i = 0; i < corpus.actions.size(); ++i) {
-    //cerr << corpus.actions[i] << '\t' << parser.p_r->values[i].transpose() << endl;
-    //cerr << corpus.actions[i] << '\t' << parser.p_p2a->values.col(i).transpose() << endl;
-  //}
 }
 

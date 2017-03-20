@@ -1,5 +1,5 @@
-#ifndef __LTP_LSTMSDPARSER_LISTBASED_H__
-#define __LTP_LSTMSDPARSER_LISTBASED_H__
+#ifndef __LSTMSDPARSER_LISTBASED_H__
+#define __LSTMSDPARSER_LISTBASED_H__
 
 #include "lstmsdparser/system.h"
 
@@ -43,4 +43,4 @@ public:
 
 };
 
-#endif  //  end for __LTP_LSTMSDPARSER_LISTBASED_H__
+#endif  //  end for __LSTMSDPARSER_LISTBASED_H__

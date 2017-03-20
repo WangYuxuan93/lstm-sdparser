@@ -1,5 +1,5 @@
-#ifndef __LTP_LSTMSDPARSER_PARSER_H__
-#define __LTP_LSTMSDPARSER_PARSER_H__
+#ifndef __LSTMSDPARSER_PARSER_H__
+#define __LSTMSDPARSER_PARSER_H__
 
 #include <cstdlib>
 #include <algorithm>
@@ -33,7 +33,6 @@
 #include "lstmsdparser/layers.h"
 #include "lstmsdparser/theirtreelstm.h"
 
-namespace ltp {
 namespace lstmsdparser {
 
 using namespace dynet::expr;
@@ -64,7 +63,6 @@ typedef struct Options {
 	unsigned POS_DIM; // 50
 	unsigned REL_DIM; // 50
   unsigned BILSTM_HIDDEN_DIM; // 100
-  unsigned beam_size; // 0
   unsigned max_itr; // 10000
 	std::string transition_system; // "list"
   std::string dynet_seed;
@@ -72,94 +70,7 @@ typedef struct Options {
 	bool USE_POS; // true
   bool USE_BILSTM; // false
   bool USE_TREELSTM; // false
-  bool GLOBAL_LOSS; // false
 }Options;
-
-struct DataGatherer {
-    unsigned sentences_parsed = 0;
-    float decisions_made = 0;
-    float m2_decisions_made = 0;
-};
-
-// for beam search
-
-struct Action {
-    unsigned val;
-    double score;
-    Expression log_prob;
-
-    Expression log_zlocal;
-    Expression rho;
-};
-
-struct ActionCompare {
-    bool operator()(const Action& a, const Action& b) const {
-        return a.score > b.score;
-    }
-};
-
-struct ParserState {
-  LSTMBuilder stack_lstm;
-  LSTMBuilder buffer_lstm;
-  LSTMBuilder action_lstm;
-  TheirTreeLSTMBuilder tree_lstm;
-  vector<Expression> buffer;
-  vector<int> bufferi;
-  vector<Expression> stack;
-  vector<int> stacki;
-  vector<unsigned> results;  // sequence of predicted actions
-  vector<vector<bool>> graph; // directed graph for sub-graph
-  bool complete;
-
-  bool gold = true;
-  Action next_gold_action; // only filled for gold parses
-
-  double score;
-  vector<Expression> log_probs;
-  vector<Expression> rhos;
-  vector<Expression> log_zlocals;
-};
-
-struct StepSelect {
-    Action action;
-    double total_score;
-    ParserState* source;
-};
-
-struct StepSelectCompare {
-    bool operator()(const StepSelect& a, const StepSelect& b) const {
-        return a.total_score > b.total_score;
-    }
-};
-
-struct ParserStatePointerCompare {
-    bool operator()(ParserState* a, ParserState* b) const {
-        return a->score > b->score;
-    }
-};
-
-struct ParserStatePointerCompareReverse {
-    bool operator()(ParserState* a, ParserState* b) const {
-        return a->score < b->score;
-    }
-};
-
-struct getNextBeamsArgs {
-    const vector<string>& setOfActions;
-    const Expression& p2a;
-    const Expression& pbias;
-    const Expression& abias;
-    const Expression& S;
-    const Expression& B;
-    const Expression& A;
-    const Expression& fwB;
-    const Expression& bwB;
-    const bool& build_training_graph;
-    const vector<unsigned>& correct_actions;
-    const int& action_count;
-    //const int& idx; // sent.size() - bufferi.back()
-    const std::vector<BidirectionalLSTMLayer::Output>& bilstm_outputs;
-};
 
 static volatile bool requested_stop;
 
@@ -173,7 +84,6 @@ public:
 	Sizes System_size;
 	std::string transition_system;
   Model model;
-  DataGatherer dg;
 
   bool use_pretrained; // True if use pretraiend word embedding
   
@@ -233,19 +143,6 @@ public:
   bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, const std::vector<std::vector<bool>> dir_graph,//const std::vector<bool>  dir_graph [], 
                                                 const std::vector<int>& stacki, const std::vector<int>& bufferi);
   std::vector<std::vector<string>> compute_heads(const std::vector<unsigned>& sent, const std::vector<unsigned>& actions);
-  
-  void apply_action_to_state(  ComputationGraph* hg,
-                             ParserState* ns,
-                             unsigned action,
-                             const vector<string>& setOfActions,
-                             const vector<unsigned>& sent,  // sent with oovs replaced
-                             const map<unsigned, std::string>& intToWords,
-                             const Expression& cbias,
-                             const Expression& H,
-                             const Expression& D,
-                             const Expression& R,
-                             string* rootword,
-                             const vector<Expression>& word_emb);
 
   void apply_action( ComputationGraph* hg,
                    LSTMBuilder& stack_lstm,
@@ -269,26 +166,6 @@ public:
                    vector<vector<bool>>& graph,
                    const vector<Expression>& word_emb);
 
-  //without [treelstm]
-  /*void apply_action2( ComputationGraph* hg,
-                   LSTMBuilder& stack_lstm,
-                   LSTMBuilder& buffer_lstm,
-                   LSTMBuilder& action_lstm,
-                   vector<Expression>& buffer,
-                   vector<int>& bufferi,
-                   vector<Expression>& stack,
-                   vector<int>& stacki,
-                   vector<unsigned>& results,
-                   unsigned action,
-                   const vector<string>& setOfActions,
-                   const vector<unsigned>& sent,  // sent with oovs replaced
-                   const map<unsigned, std::string>& intToWords,
-                   const Expression& cbias,
-                   const Expression& H,
-                   const Expression& D,
-                   const Expression& R,
-                   string* rootword);*/
-
   std::vector<unsigned> log_prob_parser(ComputationGraph* hg,
                      const std::vector<unsigned>& raw_sent,  // raw sentence
                      const std::vector<unsigned>& sent,  // sent with oovs replaced
@@ -302,26 +179,6 @@ public:
                      Expression * act_rep = NULL);
 
   bool IsActionForbidden2(const string& a, unsigned bsize, unsigned ssize, vector<int> stacki);
-
-  void getNextBeams(ParserState* cur, vector<StepSelect>* potential_next_beams,
-                          ComputationGraph* hg, const getNextBeamsArgs& args,
-                          ParserState*& gold_parse);
-
-  //without [bilstm]
-  /*void getNextBeams2(ParserState* cur, vector<StepSelect>* potential_next_beams,
-                          ComputationGraph* hg, const getNextBeamsArgs& args,
-                          ParserState*& gold_parse);*/
-
-  std::vector<unsigned> log_prob_parser_beam(ComputationGraph *hg, 
-                      const vector<unsigned> &raw_sent,
-                      const vector<unsigned> &sent, 
-                      const vector<unsigned> &sentPos,
-                      const vector<unsigned> &correct_actions, 
-                      const vector<string> &setOfActions,
-                      const map<unsigned, std::string> &intToWords, 
-                      double *right, 
-                      unsigned beam_size,
-                      DataGatherer &dg);
 
   int process_headless(std::vector<std::vector<string>>& hyp, std::vector<std::vector<string>>& cand, std::vector<Expression>& word_rep, 
                                     Expression& act_rep, const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos);
@@ -361,9 +218,6 @@ public:
   map<string, double> evaluate(const std::vector<std::vector<std::vector<string>>>& refs, const std::vector<std::vector<std::vector<string>>>& hyps);
 };
 
-
-
 } //  namespace lstmsdparser
-} //  namespace ltp
 
-#endif  //  end for __LTP_LSTMSDPARSER_PARSER_H__
+#endif  //  end for __LSTMSDPARSER_PARSER_H__

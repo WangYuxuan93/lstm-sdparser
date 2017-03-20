@@ -1,6 +1,5 @@
 #include "lstmsdparser/lstm_sdparser.h"
 
-namespace ltp {
 namespace lstmsdparser {
 
 using namespace dynet::expr;
@@ -18,8 +17,8 @@ std::string StrToLower(const std::string s){
 
 //struct LSTMParser {
 
-LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 0, 10000, 
-                              "list-tree", "", "4000", true, false, false, false}) {}
+LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
+                              "list-tree", "", "4000", true, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -151,7 +150,7 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
 
 void LSTMParser::get_dynamic_infos(){
   
-  System_size.kROOT_SYMBOL = corpus.get_or_add_word(ltp::lstmsdparser::ROOT_SYMBOL);
+  System_size.kROOT_SYMBOL = corpus.get_or_add_word(lstmsdparser::ROOT_SYMBOL);
 
   {  // compute the singletons in the parser's training data
     map<unsigned, unsigned> counts;
@@ -170,18 +169,6 @@ void LSTMParser::get_dynamic_infos(){
   for (unsigned i = 0; i < corpus.nactions; ++i)
     possible_actions[i] = i;
 }
-/*
-bool LSTMParser::has_path_to(int w1, int w2, const vector<bool>  dir_graph []){
-    //cerr << endl << w1 << " has path to " << w2 << endl;
-    if (dir_graph[w1][w2])
-        return true;
-    for (int i = 0; i < (int)dir_graph[w1].size(); ++i){
-        if (dir_graph[w1][i])
-            if (has_path_to(i, w2, dir_graph))
-                return true;
-    }
-    return false;
-}*/
 
 bool LSTMParser::has_path_to(int w1, int w2, const vector<vector<string>>& graph){
     //cerr << endl << w1 << " has path to " << w2 << endl;
@@ -893,35 +880,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     return results;
   }
 
-  // Applies an action to a ParserState struct
-  void LSTMParser::apply_action_to_state(  ComputationGraph* hg,
-                             ParserState* ns,
-                             unsigned action,
-                             const vector<string>& setOfActions,
-                             const vector<unsigned>& sent,  // sent with oovs replaced
-                             const map<unsigned, std::string>& intToWords,
-                             const Expression& cbias,
-                             const Expression& H,
-                             const Expression& D,
-                             const Expression& R,
-                             string* rootword,
-                             const vector<Expression>& word_emb) {
-    apply_action(hg,
-                 ns->stack_lstm, ns->buffer_lstm, ns->action_lstm, ns->tree_lstm,
-                 ns->buffer, ns->bufferi, ns->stack, ns->stacki, ns->results,
-                 action, setOfActions,
-                 sent, intToWords,
-                 cbias, H, D, R,
-                 rootword, ns->graph, word_emb);
-    /*apply_action2(hg,
-                 ns->stack_lstm, ns->buffer_lstm, ns->action_lstm,
-                 ns->buffer, ns->bufferi, ns->stack, ns->stacki, ns->results,
-                 action, setOfActions,
-                 sent, intToWords,
-                 cbias, H, D, R,
-                 rootword);*/
-  }
-
   void LSTMParser::apply_action( ComputationGraph* hg,
                    LSTMBuilder& stack_lstm,
                    LSTMBuilder& buffer_lstm,
@@ -1040,523 +998,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     }
   }
 
-  //without [treelstm]
-  // Applies an action (shift, reduce, etc) to a stack, buffer, and LSTM set
-  /*void LSTMParser::apply_action2( ComputationGraph* hg,
-                   LSTMBuilder& stack_lstm,
-                   LSTMBuilder& buffer_lstm,
-                   LSTMBuilder& action_lstm,
-                   vector<Expression>& buffer,
-                   vector<int>& bufferi,
-                   vector<Expression>& stack,
-                   vector<int>& stacki,
-                   vector<unsigned>& results,
-                   unsigned action,
-                   const vector<string>& setOfActions,
-                   const vector<unsigned>& sent,  // sent with oovs replaced
-                   const map<unsigned, std::string>& intToWords,
-                   const Expression& cbias,
-                   const Expression& H,
-                   const Expression& D,
-                   const Expression& R,
-                   string* rootword) {
-
-    // add current action to results
-    //cerr << "add current action to results\n";
-    results.push_back(action);
-
-    // add current action to action LSTM
-    //cerr << "add current action to action LSTM\n";
-    Expression actione = lookup(*hg, p_a, action);
-    action_lstm.add_input(actione);
-
-    // get relation embedding from action (TODO: convert to relation from action?)
-    //cerr << "get relation embedding from action\n";
-    Expression relation = lookup(*hg, p_r, action);
-
-    const string &actionString = setOfActions[action];
-
-
-
-    const char ac = actionString[0];
-    const char ac2 = actionString[1];
-    // Execute one of the actions
-    if (ac == 'S' && ac2 == 'H') {  // SHIFT
-        assert(buffer.size() > 1); // dummy symbol means > 1 (not >= 1)
-        stack.push_back(buffer.back());
-        stack_lstm.add_input(buffer.back());
-        buffer.pop_back();
-        buffer_lstm.rewind_one_step();
-        stacki.push_back(bufferi.back());
-        bufferi.pop_back();
-    }
-    else if (ac == 'S' && ac2 == 'W') { //SWAP --- Miguel
-        assert(stack.size() > 2); // dummy symbol means > 2 (not >= 2)
-
-        //std::cout<<"SWAP: "<<"stack.size:"<<stack.size()<<"\n";
-
-        Expression toki, tokj;
-        unsigned ii = 0, jj = 0;
-        tokj = stack.back();
-        jj = stacki.back();
-        stack.pop_back();
-        stacki.pop_back();
-
-        toki = stack.back();
-        ii = stacki.back();
-        stack.pop_back();
-        stacki.pop_back();
-
-        buffer.push_back(toki);
-        bufferi.push_back(ii);
-
-        stack_lstm.rewind_one_step();
-        stack_lstm.rewind_one_step();
-
-
-        buffer_lstm.add_input(buffer.back());
-
-        stack.push_back(tokj);
-        stacki.push_back(jj);
-
-        stack_lstm.add_input(stack.back());
-
-        //stack_lstm.rewind_one_step();
-        //buffer_lstm.rewind_one_step();
-    }
-    else { // LEFT or RIGHT
-        assert(stack.size() > 2); // dummy symbol means > 2 (not >= 2)
-        assert(ac == 'L' || ac == 'R');
-        Expression dep, head;
-        unsigned depi = 0, headi = 0;
-        (ac == 'R' ? dep : head) = stack.back();
-        (ac == 'R' ? depi : headi) = stacki.back();
-        stack.pop_back();
-        stacki.pop_back();
-        (ac == 'R' ? head : dep) = stack.back();
-        (ac == 'R' ? headi : depi) = stacki.back();
-        stack.pop_back();
-        stacki.pop_back();
-        if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
-        // composed = cbias + H * head + D * dep + R * relation
-        Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
-        Expression nlcomposed = tanh(composed);
-        stack_lstm.rewind_one_step();
-        stack_lstm.rewind_one_step();
-        stack_lstm.add_input(nlcomposed);
-        stack.push_back(nlcomposed);
-        stacki.push_back(headi);
-    }
-}*/
-
-  // run beam search
-vector<unsigned> LSTMParser::log_prob_parser_beam(ComputationGraph *hg, 
-                    const vector<unsigned> &raw_sent,
-                    const vector<unsigned> &sent, 
-                    const vector<unsigned> &sentPos,
-                    const vector<unsigned> &correct_actions, 
-                    const vector<string> &setOfActions,
-                    const map<unsigned, std::string> &intToWords, 
-                    double *right, 
-                    unsigned beam_size,
-                    DataGatherer &dg) {
-        //for (unsigned i = 0; i < sent.size(); ++i) cerr << ' ' << intToWords.find(sent[i])->second;
-        //cerr << endl;
-
-        //cerr << "\nstarting with memory usage: " << getMemoryUsage() << "\n";
-        //const vector<string> setOfActions = corpus.actions;
-        //const map<unsigned, std::string> intToWords = corpus.intToWords;
-
-        auto overall_start = std::chrono::high_resolution_clock::now();
-
-        vector<unsigned> results;
-        const bool build_training_graph = correct_actions.size() > 0;
-
-        stack_lstm.new_graph(*hg);
-        stack_lstm.start_new_sequence();
-        //buffer_lstm.new_graph(*hg);
-        //buffer_lstm.start_new_sequence();
-        action_lstm.new_graph(*hg);
-        action_lstm.start_new_sequence();
-
-        Expression fwB;
-        Expression bwB;
-        if (Opt.USE_BILSTM){
-            buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
-            fwB = parameter(*hg, p_fwB); // [bilstm]
-            bwB = parameter(*hg, p_bwB); // [bilstm]
-        }else{
-            buffer_lstm.new_graph(*hg);
-            buffer_lstm.start_new_sequence();
-        }
-        if (Opt.USE_TREELSTM){
-            tree_lstm.new_graph(*hg); // [treelstm]
-            tree_lstm.start_new_sequence(); // [treelstm]
-            tree_lstm.initialize_structure(sent.size()); // [treelstm]
-        }
-        // variables in the computation graph representing the parameters
-        Expression pbias = parameter(*hg, p_pbias);
-        Expression H = parameter(*hg, p_H);
-        Expression D = parameter(*hg, p_D);
-        Expression R = parameter(*hg, p_R);
-        Expression cbias = parameter(*hg, p_cbias);
-        Expression S = parameter(*hg, p_S);
-        Expression B = parameter(*hg, p_B);
-        Expression A = parameter(*hg, p_A);
-        Expression ib = parameter(*hg, p_ib);
-        Expression w2l = parameter(*hg, p_w2l);
-        Expression p2l;
-        if (Opt.USE_POS)
-            p2l = parameter(*hg, p_p2l);
-        Expression t2l;
-        if (use_pretrained)
-            t2l = parameter(*hg, p_t2l);
-        Expression p2a = parameter(*hg, p_p2a);
-        Expression abias = parameter(*hg, p_abias);
-        Expression action_start = parameter(*hg, p_action_start);
-
-        action_lstm.add_input(action_start);
-        vector<Expression> buffer(sent.size() + 1);  // variables representing word embeddings (possibly including POS info)
-        vector<int> bufferi(sent.size() + 1);  // position of the words in the sentence
-        // precompute buffer representation from left to right
-        vector<Expression> word_emb(sent.size()); // [treelstm] store original word representation emb[i] for sent[i]
-
-        for (unsigned i = 0; i < sent.size(); ++i) {
-            assert(sent[i] < System_size.VOCAB_SIZE);
-            Expression w=lookup(*hg, p_w, sent[i]);
-
-            Expression i_i;
-            if (Opt.USE_POS) {
-                Expression p = lookup(*hg, p_p, sentPos[i]);
-                i_i = affine_transform({ib, w2l, w, p2l, p});
-            } else {
-                i_i = affine_transform({ib, w2l, w});
-            }
-            if (use_pretrained && pretrained.count(raw_sent[i])) {
-                Expression t = const_lookup(*hg, p_t, raw_sent[i]);
-                i_i = affine_transform({i_i, t2l, t});
-            }
-            buffer[sent.size() - i] = rectify(i_i);
-            bufferi[sent.size() - i] = i;
-            if (Opt.USE_TREELSTM)
-                word_emb[i] = buffer[sent.size() - i];
-        }
-        if (Opt.USE_TREELSTM){
-            vector<unsigned> h;
-            for (int i = 0; i < sent.size(); i++)
-                tree_lstm.add_input(i, h, word_emb[i]);
-        }
-
-        // dummy symbol to represent the empty buffer
-        buffer[0] = parameter(*hg, p_buffer_guard);
-        bufferi[0] = -999;
-        std::vector<BidirectionalLSTMLayer::Output> bilstm_outputs;
-        if (Opt.USE_BILSTM){
-            buffer_bilstm.add_inputs(hg, buffer); 
-            buffer_bilstm.get_outputs(hg, bilstm_outputs); // [bilstm] output of bilstm for buffer, first is fw, second is bw
-        }else{
-            for (auto& b : buffer)
-                buffer_lstm.add_input(b);
-        }
-
-        vector<Expression> stack;  // variables representing subtree embeddings
-        vector<int> stacki; // position of words in the sentence of head of subtree
-        stack.push_back(parameter(*hg, p_stack_guard));
-        stacki.push_back(-999); // not used for anything
-        // drive dummy symbol on stack through LSTM
-        stack_lstm.add_input(stack.back());
-
-        //
-        // End of "setup code", below this is beam search code
-        //
-
-        auto step_start = std::chrono::high_resolution_clock::now();
-
-        int newcount = 0;
-        int delcount = 0;
-
-        // initialize structures for beam search
-        ParserState* init = new ParserState(); newcount ++;
-
-        vector<bool> v;
-        for (int i = 0; i < (int)sent.size(); ++i)
-            v.push_back(false);
-        for (int i = 0; i < (int)sent.size(); ++i)
-            init->graph.push_back(v);
-        init->stack_lstm = stack_lstm;
-        init->buffer_lstm = buffer_lstm;
-        init->action_lstm = action_lstm;
-        if (Opt.USE_TREELSTM){
-            init->tree_lstm = tree_lstm;
-        }
-        init->buffer = buffer;
-        init->bufferi = bufferi;
-        init->stack = stack;
-        init->stacki = stacki;
-        init->results = results;
-        init->score = 0;
-        init->gold = true;
-        if (init->stacki.size() ==1 && init->bufferi.size() == 1) { assert(!"bad0"); }
-
-        vector<ParserState*> ongoing; // represents the currently-active beams
-        ongoing.push_back(init);
-        vector<StepSelect> next_beams; // represents the "next" set of beams, to be used when all current beams are exhausted
-        vector<ParserState*> completed; // contains beams that have parsed the whole sentence
-        unordered_set<ParserState*> need_to_delete;
-        need_to_delete.insert(init);
-
-        auto loop_start = std::chrono::high_resolution_clock::now();
-  
-        // double beam_acceptance_percentage;
-        // if (DYNAMIC_BEAM) { beam_acceptance_percentage = log((100-beam_size)/100.0); beam_size = 32; } // 32 is maximum beams for dynamic
-        unsigned active_beams = beam_size; // counts the number of incomplete beams we still need to process
-        string rootword;
-        ParserState* gold_parse = init;
-        unsigned action_count = 0;  // incremented at each prediction
-        bool full_gold_found = false;
-        vector<Expression> log_probs;
-        vector<Expression> log_zlocals;
-        vector<Expression> rhos;
-        while (completed.size() < beam_size){
-            if (ongoing.size() == 0) { // if we've run out of beams in the current step, start on the next one
-                auto step_end = std::chrono::high_resolution_clock::now();
-                double dur = std::chrono::duration<double, std::milli>(step_end - step_start).count();
-                step_start = step_end;
-
-                if (next_beams.size() == 0) {
-                    // Sometimes, we have completed all the beams we can, but we set the beam size too high, and there
-                    // just aren't enough unique moves to complete more. In that case, we are just done.
-                    break;
-                }
-
-                // Move the next set to be the current set
-                for (StepSelect st : next_beams) {
-                    // Create a new ParserState, copying the current one
-                    ParserState* ns = new ParserState(); newcount++;
-                    need_to_delete.insert(ns); // this prevents memory leaks
-                    *ns = *(st.source);
-
-                    // Update the score
-                    ns->score += st.action.score;
-
-                    // update the goldness
-                    if (build_training_graph && (!ns->gold || st.action.val != correct_actions[action_count])) ns->gold = false;
-
-                    // action_log_prob = pick(adist, action)
-                    ns->log_probs.push_back(st.action.log_prob);
-                    if (Opt.GLOBAL_LOSS) {
-                        ns->log_zlocals.push_back(st.action.log_zlocal);
-                        ns->rhos.push_back(st.action.rho);
-                    }
-                    // do action
-                    apply_action_to_state(hg, ns, st.action.val,
-                                          setOfActions, sent, intToWords,
-                                          cbias, H, D, R, &rootword, word_emb);
-                    ongoing.push_back(ns);
-                }
-                next_beams.clear();
-                ++action_count;
-
-                // if we have reference actions (for training), and are doing early-update,
-                // check whether we need to cut off parsing of the sentence
-                if (build_training_graph) {
-
-                    bool gold_in_beam = full_gold_found;
-                    for (ParserState* ps : ongoing) {
-                        if (ps->gold) {
-                            gold_in_beam = true;
-                            break;
-                        }
-                    }
-                    if (!gold_in_beam) {
-                        Action gold_action = gold_parse->next_gold_action;
-
-                        gold_parse->score += gold_action.score;
-                        // action_log_prob = pick(adist, action)
-                        gold_parse->log_probs.push_back(gold_action.log_prob);
-                        if (Opt.GLOBAL_LOSS) {
-                            gold_parse->log_zlocals.push_back(gold_action.log_zlocal);
-                            gold_parse->rhos.push_back(gold_action.rho);
-                        }
-
-                        // is this necessary?
-                        apply_action_to_state(hg, gold_parse, gold_action.val,
-                                              setOfActions, sent, intToWords,
-                                              cbias, H, D, R, &rootword, word_emb);
-                        break;
-                    }
-                }
-            } 
-
-            while (ongoing.size() != 0) {
-                // get the state of a beam, and remove that beam from ongoing (because it has been processed)
-                ParserState *cur = ongoing.back();
-                need_to_delete.insert(cur); // this prevents memory leaks
-                ongoing.pop_back();
-                //cerr << "sc2 " << ongoing.top()->score << "\n";
-
-                // check whether the current beam is completed
-                if (cur->stack.size() == 2 && cur->buffer.size() == 1) {
-                    completed.push_back(cur);
-                    if (cur->gold) {
-                        gold_parse = cur;
-                        full_gold_found = true;
-                    }
-                    --active_beams;
-                    if (completed.size() == beam_size)
-                        break; // we have completed all the beams we need, so just end here
-                    continue;
-                }
-                // Since we have now confirmed that the beam is not complete, we want to generate all possible actions to
-                // take from here, and keep the best states for the next beam set
-                dg.decisions_made++;
-                getNextBeamsArgs nba{setOfActions,p2a,pbias,abias,S,B,A,fwB,bwB,build_training_graph,
-                                      correct_actions,action_count,bilstm_outputs};
-                vector<StepSelect> potential_next_beams;
-                getNextBeams(cur, &potential_next_beams,
-                                 hg,
-                                 nba,
-                                 gold_parse);
-                next_beams.insert(next_beams.end(), potential_next_beams.begin(), potential_next_beams.end());
-            }
-            // cull down next_beams to just keep the best beams
-            // keep the next_beams sorted
-            sort(next_beams.begin(), next_beams.end(), StepSelectCompare());
-            while (next_beams.size() > active_beams) {
-                next_beams.pop_back();
-            }
-        } // while (completed.size() < beam_size)
-        auto got_answers = std::chrono::high_resolution_clock::now();
-        // if we are training, just use the gold one
-        if (build_training_graph) {
-            stack_lstm = gold_parse->stack_lstm;
-            buffer_lstm = gold_parse->buffer_lstm;
-            action_lstm = gold_parse->action_lstm;
-            tree_lstm = gold_parse->tree_lstm; //[treelstm]
-            stack = gold_parse->stack;
-            stacki = gold_parse->stacki;
-            buffer = gold_parse->buffer;
-            bufferi = gold_parse->bufferi;
-            results = gold_parse->results;
-            log_probs = gold_parse->log_probs;
-            if (Opt.GLOBAL_LOSS) {
-                log_zlocals = gold_parse->log_zlocals;
-                rhos = gold_parse->rhos;
-            }
-            // Count how many actions we got right
-            assert(results.size() <= correct_actions.size());
-            for (unsigned i = 0; i < results.size(); i++) {
-                if (correct_actions[i] == results[i]) { (*right)++; }
-            }
-        } else { // if we don't have answers, just take the results from the best beam
-            sort(completed.begin(), completed.end(), ParserStatePointerCompare());
-
-            stack_lstm = completed.front()->stack_lstm;
-            buffer_lstm = completed.front()->buffer_lstm;
-            action_lstm = completed.front()->action_lstm;
-            tree_lstm = completed.front()->tree_lstm; //[treelstm]
-            stack = completed.front()->stack;
-            stacki = completed.front()->stacki;
-            buffer = completed.front()->buffer;
-            bufferi = completed.front()->bufferi;
-            results = completed.front()->results;
-            log_probs = completed.front()->log_probs;
-            if (Opt.GLOBAL_LOSS) {
-                log_zlocals = completed.front()->log_zlocals;
-                rhos = completed.front()->rhos;
-            }
-
-            assert(stack.size() == 2); // guard symbol, root
-            assert(stacki.size() == 2);
-            assert(buffer.size() == 1); // guard symbol
-            assert(bufferi.size() == 1);
-
-            auto overall_end = std::chrono::high_resolution_clock::now();
-        }
-
-        Expression intermediate_loss;
-        if (Opt.GLOBAL_LOSS && build_training_graph) {
-            // Global loss from Andor et al. 2016
-            // NOTE - this did not end up working
-            vector<Expression> beam_sum_rhos;
-            //vector<Expression> beam_exp_sum_log_probs;
-            //vector<Expression> beam_sum_log_probs; // sum(beam_sum_log_pLI) = log(pL)
-            //vector<Expression> beam_sum_log_probs2; // sum(beam_sum_log_pLI) = log(pL)
-
-            if (completed.size() < beam_size) { // Bj, all ongoing beams and the gold beam
-                for (ParserState *ps : ongoing) { beam_sum_rhos.push_back(sum(ps->rhos)); }
-                beam_sum_rhos.push_back(sum(rhos)); // gold beam
-
-                /*for (ParserState *ps : ongoing) { beam_exp_sum_log_probs.push_back(exp(sum(ps->log_probs))); }
-                beam_exp_sum_log_probs.push_back(exp(sum(log_probs))); // gold beam
-    
-                for (ParserState *ps : ongoing) { beam_sum_log_probs.push_back(sum(ps->log_probs)); }
-                beam_sum_log_probs.push_back(sum(log_probs)); // gold beam
-
-                for (ParserState *ps : ongoing) {
-                    vector<Expression> log_pLIs;
-                    for (unsigned act_i = 0; act_i < ps->rhos.size(); act_i++) {
-                        log_pLIs.push_back(ps->rhos[act_i] - ps->log_zlocals[act_i]);
-                    }
-                    beam_sum_log_probs2.push_back(sum(log_pLIs));
-                }
-                vector<Expression> log_pLIs;
-                for (unsigned act_i = 0; act_i < rhos.size(); act_i++) {
-                     log_pLIs.push_back(rhos[act_i] - log_zlocals[act_i]);
-                }
-                beam_sum_log_probs2.push_back(sum(log_pLIs)); // gold beam */
-            } else { // Bn, set of completed beams
-                assert(completed.size() == beam_size);
-                for (ParserState* ps : completed) { beam_sum_rhos.push_back(sum(ps->rhos)); }
-                /*for (ParserState* ps : completed) { beam_exp_sum_log_probs.push_back(exp(sum(ps->log_probs))); }
-                for (ParserState* ps : completed) { beam_sum_log_probs.push_back(sum(ps->log_probs)); }
-                for (ParserState* ps : completed) {
-                    vector<Expression> log_pLIs;
-                    for (unsigned act_i = 0; act_i < ps->rhos.size(); act_i++) {
-                        log_pLIs.push_back(ps->rhos[act_i] - ps->log_zlocals[act_i]);
-                    }
-                    beam_sum_log_probs2.push_back(sum(log_pLIs));
-                }*/
-            }
-
-//            cerr << "rhos:       \t"; for (Expression rho : rhos) { cerr << rho.value() << "\t";}  cerr << "\n";
-//            cerr << "beam zg:    \t"; for (Expression beam_zglobal : beam_zglobals) { cerr << beam_zglobal.value() << "\n\t\t";}  cerr << "\n";
-//
-//            cerr << "-sum(rhos) ?= -sum(log_probs) - sum(log_zlocals): \n";
-//            cerr << (-sum(rhos)).value() << " ?= " << (-sum(log_probs)-sum(log_zlocals)).value() << " (" << (-sum(log_probs)).value() << " + " << (-sum(log_zlocals)).value() << ")\n";
-//
-//            cerr << (-sum(rhos)).value() <<  " + " << logsumexp(beam_zglobals).value() << "\n";
-
-            cerr << std::setprecision(10);
-
-            /*vector<Expression> log_pLIs;            
-            vector<Expression> lil_rhos;
-            vector<Expression> lil_bslp;
-            for (unsigned act_i = 0; act_i < rhos.size(); act_i++) {
-                log_pLIs.push_back(rhos[act_i] - log_zlocals[act_i]);
-            }*/
-            intermediate_loss = -sum(rhos) + logsumexp(beam_sum_rhos);
-
-      
-        } else {
-            intermediate_loss = -sum(log_probs);
-        }
-
-        // prevents memory leaks
-        ongoing.clear();
-        next_beams.clear();
-        completed.clear();
-        for (ParserState* ps: need_to_delete) {delete ps; delcount++;}
-        need_to_delete.clear();
-
-
-        dg.sentences_parsed++;
-        Expression tot_neglogprob;
-        tot_neglogprob = intermediate_loss;
-        assert(tot_neglogprob.pg != nullptr);
-        return results;
-  }
-
   void LSTMParser::process_headless_search_all(const vector<unsigned>& sent, const vector<unsigned>& sentPos, 
                                                         const vector<string>& setOfActions, vector<Expression>& word_rep, 
                                                         Expression& act_rep, int n, int sent_len, int dir, map<int, double>* scores, 
@@ -1572,185 +1013,7 @@ vector<unsigned> LSTMParser::log_prob_parser_beam(ComputationGraph *hg,
             (*rels)[i] = rel;
             //cerr << "search all n: " << n << " i: " << i << "rel: " << rel << endl;
         }
-  } 
-
-  void LSTMParser::getNextBeams(ParserState* cur, vector<StepSelect>* potential_next_beams,
-                          ComputationGraph* hg, const getNextBeamsArgs& args,
-                          ParserState*& gold_parse){
-    const vector<string>& setOfActions = args.setOfActions;
-    const Expression& p2a = args.p2a;
-    const Expression& pbias = args.pbias;
-    const Expression& abias = args.abias;
-    const Expression& S = args.S;
-    const Expression& B = args.B;
-    const Expression& A = args.A;
-    const bool& build_training_graph = args.build_training_graph;
-    const vector<unsigned>& correct_actions = args.correct_actions;
-    const int& action_count = args.action_count;
-
-    //const std::vector<BidirectionalLSTMLayer::Output>& bilstm_outputs = args.bilstm_outputs;
-    //const Expression& fwB = args.fwB;
-    //const Expression& bwB = args.bwB;
-    int idx = 0;
-    if (Opt.USE_BILSTM){
-        unsigned sent_len = cur->graph.size();
-        if (cur->bufferi.size() > 1)
-            idx = sent_len - cur->bufferi.back();
-    }
-    // get list of possible actions for the current parser state
-    vector<unsigned> current_valid_actions;
-    for (auto a: possible_actions) {
-        if (IsActionForbidden2(setOfActions[a], cur->buffer.size(), cur->stack.size(), cur->stacki))
-            continue;
-        current_valid_actions.push_back(a);
-    }
-
-    // p_t = pbias + S * slstm + B * blstm + A * almst
-    //Expression p_t = affine_transform({pbias, S, cur->stack_lstm.back(), B, cur->buffer_lstm.back(), A, cur->action_lstm.back()});
-    
-    Expression p_t;
-    if (Opt.USE_BILSTM){
-        //cerr << "bilstm: " << bilstm_outputs.size() << " id: " 
-        //<< sent.size() - bufferi.back() << " bufferi: " << bufferi.back() << endl;
-        Expression fwbuf,bwbuf;
-        fwbuf = args.bilstm_outputs[idx].first - args.bilstm_outputs[1].first;
-        bwbuf = args.bilstm_outputs[1].second - args.bilstm_outputs[idx].second;
-        // [bilstm] p_t = pbias + S * slstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
-        p_t = affine_transform({pbias, S, cur->stack_lstm.back(), args.fwB, fwbuf, args.bwB, bwbuf, 
-                                A, cur->action_lstm.back()});
-    }else{
-        p_t = affine_transform({pbias, S, cur->stack_lstm.back(), B, cur->buffer_lstm.back(), 
-                                A, cur->action_lstm.back()});
-    }
-    Expression nlp_t = rectify(p_t);
-    // r_t = abias + p2a * nlp
-    Expression r_t = affine_transform({abias, p2a, nlp_t});
-    // adist = log_softmax(r_t, current_valid_actions)
-    Expression adiste = log_softmax(r_t, current_valid_actions);
-    vector<float> adist = as_vector(hg->incremental_forward(adiste));
-
-    Expression log_zlocal;
-    if (Opt.GLOBAL_LOSS) { // not used in experiments
-        vector<Expression> intermediate;
-        for (unsigned valid_action_loc : current_valid_actions) { intermediate.push_back(pick(r_t, valid_action_loc)); }
-        log_zlocal = logsumexp(intermediate);
-    }
-    for (unsigned i = 0; i < current_valid_actions.size(); ++i) {
-        // For each action, its value is equal to the current state's value, plus the value of the action
-        double total_score = cur->score + adist[current_valid_actions[i]];
-        if (Opt.GLOBAL_LOSS) {
-            total_score = cur->score + *(pick(r_t, current_valid_actions[i]).value().v);
-        }
-        //cerr << "filling\n";
-        Action act;
-        act.score = adist[current_valid_actions[i]];
-        act.val = current_valid_actions[i];
-        act.log_prob = pick(adiste, act.val);
-        if (Opt.GLOBAL_LOSS) {
-            act.log_zlocal = log_zlocal;
-            act.rho = pick(r_t, act.val);
-            act.score = *(act.rho.value().v);
-        }
-        StepSelect next_step;
-        next_step.source = cur;
-        next_step.action = act;
-        next_step.total_score = total_score;
-
-        // if it is gold, give the gold act
-        if (build_training_graph && cur->gold) {
-            Action gold_act;
-            gold_act.score = adist[correct_actions[action_count]];
-            gold_act.val = correct_actions[action_count];
-            gold_act.log_prob = pick(adiste, gold_act.val);
-            if (Opt.GLOBAL_LOSS) {
-                gold_act.log_zlocal = log_zlocal;
-                gold_act.rho = pick(r_t, gold_act.val);
-                gold_act.score = *(gold_act.rho.value().v);
-            }
-            gold_parse = cur;
-            gold_parse->next_gold_action = gold_act;
-        }
-        potential_next_beams->push_back(next_step);
-    }
-}
-
-// without [bilstm]
-/*void LSTMParser::getNextBeams2(ParserState* cur, vector<StepSelect>* potential_next_beams,
-                          ComputationGraph* hg, const getNextBeamsArgs& args,
-                          ParserState*& gold_parse){
-
-    const vector<string>& setOfActions = args.setOfActions;
-    const Expression& p2a = args.p2a;
-    const Expression& pbias = args.pbias;
-    const Expression& abias = args.abias;
-    const Expression& S = args.S;
-    const Expression& B = args.B;
-    const Expression& A = args.A;
-    const bool& build_training_graph = args.build_training_graph;
-    const vector<unsigned>& correct_actions = args.correct_actions;
-    const int& action_count = args.action_count;
-
-    // get list of possible actions for the current parser state
-    vector<unsigned> current_valid_actions;
-    for (auto a: possible_actions) {
-        if (IsActionForbidden2(setOfActions[a], cur->buffer.size(), cur->stack.size(), cur->stacki))
-            continue;
-        current_valid_actions.push_back(a);
-    }
-
-    // p_t = pbias + S * slstm + B * blstm + A * almst
-    Expression p_t = affine_transform({pbias, S, cur->stack_lstm.back(), B, cur->buffer_lstm.back(), A, cur->action_lstm.back()});
-    Expression nlp_t = rectify(p_t);
-    // r_t = abias + p2a * nlp
-    Expression r_t = affine_transform({abias, p2a, nlp_t});
-    // adist = log_softmax(r_t, current_valid_actions)
-    Expression adiste = log_softmax(r_t, current_valid_actions);
-    vector<float> adist = as_vector(hg->incremental_forward(adiste));
-
-    Expression log_zlocal;
-    if (Opt.GLOBAL_LOSS) { // not used in experiments
-        vector<Expression> intermediate;
-        for (unsigned valid_action_loc : current_valid_actions) { intermediate.push_back(pick(r_t, valid_action_loc)); }
-        log_zlocal = logsumexp(intermediate);
-    }
-    for (unsigned i = 0; i < current_valid_actions.size(); ++i) {
-        // For each action, its value is equal to the current state's value, plus the value of the action
-        double total_score = cur->score + adist[current_valid_actions[i]];
-        if (Opt.GLOBAL_LOSS) {
-            total_score = cur->score + *(pick(r_t, current_valid_actions[i]).value().v);
-        }
-        //cerr << "filling\n";
-        Action act;
-        act.score = adist[current_valid_actions[i]];
-        act.val = current_valid_actions[i];
-        act.log_prob = pick(adiste, act.val);
-        if (Opt.GLOBAL_LOSS) {
-            act.log_zlocal = log_zlocal;
-            act.rho = pick(r_t, act.val);
-            act.score = *(act.rho.value().v);
-        }
-        StepSelect next_step;
-        next_step.source = cur;
-        next_step.action = act;
-        next_step.total_score = total_score;
-
-        // if it is gold, give the gold act
-        if (build_training_graph && cur->gold) {
-            Action gold_act;
-            gold_act.score = adist[correct_actions[action_count]];
-            gold_act.val = correct_actions[action_count];
-            gold_act.log_prob = pick(adiste, gold_act.val);
-            if (Opt.GLOBAL_LOSS) {
-                gold_act.log_zlocal = log_zlocal;
-                gold_act.rho = pick(r_t, gold_act.val);
-                gold_act.score = *(gold_act.rho.value().v);
-            }
-            gold_parse = cur;
-            gold_parse->next_gold_action = gold_act;
-        }
-        potential_next_beams->push_back(next_step);
-    }
-}*/
+} 
 
 void LSTMParser::get_best_label(const vector<unsigned>& sent, const vector<unsigned>& sentPos, 
                                     ComputationGraph* hg, const vector<string>& setOfActions, 
@@ -2030,12 +1293,8 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
           ComputationGraph hg;
           //cerr << "Start word:" << corpus.intToWords[sentence[0]]<<corpus.intToWords[sentence[1]] << endl;
           std::vector<std::vector<string>> cand;
-          if (Opt.beam_size == 0)
-              log_prob_parser(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
+          log_prob_parser(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
                               corpus.intToWords, &right, cand);
-          else
-              log_prob_parser_beam(&hg, sentence, tsentence, sentencePos, actions, corpus.actions,
-                                    corpus.intToWords, &right, Opt.beam_size, dg);
           double lp = as_scalar(hg.incremental_forward((VariableIndex)(hg.nodes.size() - 1)));
           if (lp < 0) {
              cerr << "Log prob < 0 on sentence " << order[si] << ": lp=" << lp << endl;
@@ -2079,12 +1338,8 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
           ComputationGraph hg;
           std::vector<std::vector<string>> cand;
           std::vector<unsigned> pred;
-          if (Opt.beam_size == 0)
-            pred = log_prob_parser(&hg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
+          pred = log_prob_parser(&hg, sentence, tsentence, sentencePos, std::vector<unsigned>(),
                                     corpus.actions, corpus.intToWords, &right, cand);
-          else
-            pred = log_prob_parser_beam(&hg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
-                                    corpus.actions, corpus.intToWords, &right, Opt.beam_size, dg);
           double lp = 0;
           llh -= lp;
           trs += actions.size();
@@ -2150,15 +1405,10 @@ void LSTMParser::test(string test_data_file) {
       std::vector<Expression> word_rep; // word representations
       Expression act_rep; // final action representation
       //cerr<<"compute action" << endl;
-
       {
       ComputationGraph cg;
-      if (Opt.beam_size == 0)
-          pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
                               corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
-      else
-          pred = log_prob_parser_beam(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
-                                    corpus.actions, corpus.intToWords, &right, Opt.beam_size, dg);
       }
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
       if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
@@ -2209,12 +1459,8 @@ void LSTMParser::predict_dev() {
 
       {
       ComputationGraph cg;
-      if (Opt.beam_size == 0)
-          pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
                               corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
-      else
-          pred = log_prob_parser_beam(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
-                                    corpus.actions, corpus.intToWords, &right, Opt.beam_size, dg);
       }
       /*cerr << cand.size() << endl;
       for (unsigned i = 0; i < cand.size(); ++i){
@@ -2316,13 +1562,8 @@ void LSTMParser::predict(std::vector<std::vector<string>> &hyp, const std::vecto
       double right = 0;
       {
       ComputationGraph cg;
-      if (Opt.beam_size == 0)
-          pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
                               corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
-      else
-          pred = log_prob_parser_beam(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
-                                    corpus.actions, corpus.intToWords, &right, Opt.beam_size, dg);
-
       }
       hyp = compute_heads(sentence, pred);
       //cerr << "hyp length: " << hyp.size() << " " << hyp[0].size() << endl;
@@ -2350,7 +1591,7 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
         sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
         auto pit = intToPos.find(pos[i]);
         for (unsigned j = 0; j < sentence.size() ; ++j){
-            if (hyp[j][i] != ltp::lstmsdparser::REL_NULL){
+            if (hyp[j][i] != lstmsdparser::REL_NULL){
                 auto hyp_head = j + 1;
                 if (hyp_head == sentence.size()) hyp_head = 0;
                 auto hyp_rel = hyp[j][i];
@@ -2394,7 +1635,7 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
         sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
         auto pit = intToPos.find(pos[i]);
         for (unsigned j = 0; j < sentence.size() ; ++j){
-            if (hyp[j][i] != ltp::lstmsdparser::REL_NULL){
+            if (hyp[j][i] != lstmsdparser::REL_NULL){
                 if (Mult[i].length() > 0) cout << Mult[i] << endl;
                 auto hyp_head = j + 1;
                 if (hyp_head == sentence.size()) hyp_head = 0;
@@ -2549,7 +1790,4 @@ map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& r
     return result;
 }
 
-
-
 } //  namespace lstmsdparser
-} //  namespace ltp
