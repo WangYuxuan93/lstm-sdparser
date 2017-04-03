@@ -41,8 +41,8 @@ using namespace std;
 namespace po = boost::program_options;
 
 constexpr const char* ROOT_SYMBOL = "ROOT";
-const std::string REL_NULL = "-NULL-";
-const std::string REL_EXIST = "-EXIST-";
+const std::string REL_NULL = "__NULL__";
+const std::string REL_EXIST = "__EXIST__";
 
 std::string StrToLower(const std::string s);
 
@@ -70,6 +70,7 @@ typedef struct Options {
 	bool USE_POS; // true
   bool USE_BILSTM; // false
   bool USE_TREELSTM; // false
+  bool POST_PROCESS; // true
 }Options;
 
 static volatile bool requested_stop;

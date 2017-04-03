@@ -69,6 +69,7 @@ public:
   // String literals
   static constexpr const char* UNK = "UNK";
   static constexpr const char* BAD0 = "<BAD0>";
+  static constexpr const char* ROOT = "ROOT1";
 
   //! The tree type.
   typedef std::vector<std::vector<int> > tree_t;
@@ -218,10 +219,10 @@ public:
     intToWords[0] = Corpus::BAD0;
     wordsToInt[Corpus::UNK] = 1; // unknown symbol
     intToWords[1] = Corpus::UNK;
-    wordsToInt["ROOT"] = 2; // root
-    intToWords[2] = "ROOT";
-    posToInt["ROOT"] = 1; // root
-    intToPos[1] = "ROOT";
+    wordsToInt[Corpus::ROOT] = 2; // root
+    intToWords[2] = Corpus::ROOT;
+    posToInt[Corpus::ROOT] = 1; // root
+    intToPos[1] = Corpus::ROOT;
     assert(max == 0);
     assert(maxPos == 0);
     max=3;
@@ -268,8 +269,8 @@ public:
             correct_act_sent[sentence]=a;
           }
         }
-        current_sent.push_back(wordsToInt["ROOT"]);
-        current_sent_pos.push_back(posToInt["ROOT"]);
+        current_sent.push_back(wordsToInt[Corpus::ROOT]);
+        current_sent_pos.push_back(posToInt[Corpus::ROOT]);
         sentences[sentence] = current_sent;
         sentencesPos[sentence] = current_sent_pos;    
         sentence++;
@@ -294,8 +295,8 @@ public:
         std::string pos = items[3];
         unsigned head = std::atoi(items[6].c_str()) - 1;
         std::string rel = items[7];
-        if (graph[id].size() > 0) is_tree = false;
         graph[id].push_back(std::make_pair(head, rel));
+        if (graph[id].size() > 1) {is_tree = false; continue;}
         // new POS tag
         if (posToInt[pos] == 0) {
           posToInt[pos] = maxPos;
@@ -354,8 +355,8 @@ public:
           correct_act_sent[sentence]=a;
         }
       }
-      current_sent.push_back(wordsToInt["ROOT"]);
-      current_sent_pos.push_back(posToInt["ROOT"]);
+      current_sent.push_back(wordsToInt[Corpus::ROOT]);
+      current_sent_pos.push_back(posToInt[Corpus::ROOT]);
       sentences[sentence] = current_sent;
       sentencesPos[sentence] = current_sent_pos;    
       sentence++;
@@ -419,8 +420,8 @@ public:
             correct_act_sentDev[sentence].push_back(actionIndex);
           }
         }
-        current_sent.push_back(wordsToInt["ROOT"]);
-        current_sent_pos.push_back(posToInt["ROOT"]);
+        current_sent.push_back(wordsToInt[Corpus::ROOT]);
+        current_sent_pos.push_back(posToInt[Corpus::ROOT]);
         current_sent_str.push_back("");
         sentencesDev[sentence] = current_sent;
         sentencesPosDev[sentence] = current_sent_pos;
@@ -448,8 +449,8 @@ public:
         std::string pos = items[3];
         unsigned head = std::atoi(items[6].c_str()) - 1;
         std::string rel = items[7];
-        if (graph[id].size() > 0) is_tree = false;
         graph[id].push_back(std::make_pair(head, rel));
+        if (graph[id].size() > 1) {is_tree = false; continue;}
         // new POS tag
         if (posToInt[pos] == 0) {
           posToInt[pos] = maxPos;
@@ -495,8 +496,8 @@ public:
           correct_act_sentDev[sentence].push_back(actionIndex);
         }
       }
-      current_sent.push_back(wordsToInt["ROOT"]);
-      current_sent_pos.push_back(posToInt["ROOT"]);
+      current_sent.push_back(wordsToInt[Corpus::ROOT]);
+      current_sent_pos.push_back(posToInt[Corpus::ROOT]);
       current_sent_str.push_back("");
       sentencesDev[sentence] = current_sent;
       sentencesPosDev[sentence] = current_sent_pos;
@@ -542,8 +543,8 @@ public:
       ReplaceStringInPlace(lineS, "-RRB-", "_RRB_");
       ReplaceStringInPlace(lineS, "-LRB-", "_LRB_");
       if (lineS.empty()) {
-        current_sent.push_back(wordsToInt["ROOT"]);
-        current_sent_pos.push_back(posToInt["ROOT"]);
+        current_sent.push_back(wordsToInt[Corpus::ROOT]);
+        current_sent_pos.push_back(posToInt[Corpus::ROOT]);
         current_sent_str.push_back("");
         sentencesTest[sentence] = current_sent;
         sentencesPosTest[sentence] = current_sent_pos;
@@ -580,6 +581,7 @@ public:
         unsigned id = std::atoi(items[0].c_str()) - 1;
         std::string word = items[1];
         std::string pos = items[3];
+        if ( id < current_sent.size()) continue; // in case that the input has multihead
         current_sent_lemma.push_back(items[2]);
         current_sent_xpos.push_back(items[4]);
         current_sent_feat.push_back(items[5]);
@@ -613,8 +615,8 @@ public:
 
     // Add the last sentence.
     if (current_sent.size() > 0) {
-      current_sent.push_back(wordsToInt["ROOT"]);
-      current_sent_pos.push_back(posToInt["ROOT"]);
+      current_sent.push_back(wordsToInt[Corpus::ROOT]);
+      current_sent_pos.push_back(posToInt[Corpus::ROOT]);
       current_sent_str.push_back("");
       sentencesTest[sentence] = current_sent;
       sentencesPosTest[sentence] = current_sent_pos;

@@ -18,7 +18,7 @@ std::string StrToLower(const std::string s){
 //struct LSTMParser {
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
-                              "list-tree", "", "4000", true, false, false}) {}
+                              "list-tree", "", "4000", true, false, false, true}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -225,7 +225,10 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             if (has_path_to(s0, b0, dir_graph)) return true;
             //if (b0 == root && rel != "Root") return true;
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
-            if (b0 == (int)root && !(StrToLower(rel) == "root" && root_num == 0 && s0_head_num == 0)) return true;
+            //if (b0 == (int)root && !((StrToLower(rel) == "root" || StrToLower(rel) == "-null-")
+                                     //&& root_num == 0 && s0_head_num == 0)) return true;
+            if (b0 == (int)root && !((StrToLower(rel) == "root" || StrToLower(rel) == "-null-")
+                                     && s0_head_num == 0)) return true;
             if (b0 != (int)root && StrToLower(rel) == "root") return true;
         }
         if (a[0] == 'R'){
@@ -1411,16 +1414,20 @@ void LSTMParser::test(string test_data_file) {
                               corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
       }
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
-      if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+      if (Opt.POST_PROCESS){
+        cerr << "POST PROCESS: processing headless words." << endl;
+        if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
             miss_head++;
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
+        }
       }
       hyps.push_back(hyp);
 
       if (sii%100 == 0)
          cerr << "sentence: " << sii << endl;
       //cerr<<"write to file" <<endl;
-      output_conll(sentence, sentencePos, sentenceUnkStr, hyp, sii);
+      //output_conll(sentence, sentencePos, sentenceUnkStr, hyp, sii);
+      output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
       //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
       //total_heads += sentence.size() - 1;
     }
@@ -1475,9 +1482,12 @@ void LSTMParser::predict_dev() {
       //cerr << "compute heads "<<endl;
       std::vector<std::vector<string>> ref = compute_heads(sentence, actions);
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
-      if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+      if (Opt.POST_PROCESS){
+        cerr << "POST PROCESS: processing headless words." << endl;
+        if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
             miss_head++;
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
+        }
       }
       refs.push_back(ref);
       hyps.push_back(hyp);
@@ -1567,8 +1577,11 @@ void LSTMParser::predict(std::vector<std::vector<string>> &hyp, const std::vecto
       }
       hyp = compute_heads(sentence, pred);
       //cerr << "hyp length: " << hyp.size() << " " << hyp[0].size() << endl;
-      if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+      if (Opt.POST_PROCESS){
+        cerr << "POST PROCESS: processing headless words." << endl;
+        if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
+        }
       }
     //output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
 }
@@ -1590,15 +1603,17 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
         string wit = (sentenceUnkStrings[i].size() > 0)? 
         sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
         auto pit = intToPos.find(pos[i]);
+        int nr_head = 0;
         for (unsigned j = 0; j < sentence.size() ; ++j){
             if (hyp[j][i] != lstmsdparser::REL_NULL){
+                ++ nr_head;
                 auto hyp_head = j + 1;
                 if (hyp_head == sentence.size()) hyp_head = 0;
                 auto hyp_rel = hyp[j][i];
                 cout << index << '\t'       // 1. ID 
                     << wit << '\t'         // 2. FORM
                     << "_" << '\t'         // 3. LEMMA 
-                    << "_" << '\t'         // 4. CPOSTAG 
+                    << pit->second << '\t'         // 4. CPOSTAG 
                     << pit->second << '\t' // 5. POSTAG
                     << "_" << '\t'         // 6. FEATS
                     << hyp_head << '\t'    // 7. HEAD
@@ -1606,6 +1621,18 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
                     << "_" << '\t'         // 9. PHEAD
                     << "_" << endl;        // 10. PDEPREL
             }
+        }
+        if (nr_head == 0 && Opt.POST_PROCESS){
+            cout << index << '\t'       // 1. ID 
+                    << wit << '\t'         // 2. FORM
+                    << "_" << '\t'         // 3. LEMMA 
+                    << pit->second << '\t'         // 4. CPOSTAG 
+                    << pit->second << '\t' // 5. POSTAG
+                    << "_" << '\t'         // 6. FEATS
+                    << "_" << '\t'    // 7. HEAD
+                    << "_" << '\t'     // 8. DEPREL
+                    << "_" << '\t'         // 9. PHEAD
+                    << "_" << endl;        // 10. PDEPREL
         }
   }
   cout << endl;
@@ -1657,6 +1684,9 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
 }
 
 map<string, double> LSTMParser::evaluate(const vector<vector<vector<string>>>& refs, const vector<vector<vector<string>>>& hyps) {
+    //for (int i = 0; i < refs[0].size(); ++i)
+      //for (int j = 0; j < refs[0][0].size(); ++j)
+        //cerr << i << "," << j << ":" << refs[0][i][j] << endl;
 
     std::map<int, std::vector<unsigned>>& sentencesPos = corpus.sentencesPosDev;
     const unsigned punc = corpus.posToInt["PU"];
