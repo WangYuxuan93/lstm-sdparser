@@ -71,6 +71,7 @@ typedef struct Options {
   bool USE_BILSTM; // false
   bool USE_TREELSTM; // false
   bool POST_PROCESS; // true
+  bool SDP_OUTPUT; // false
 }Options;
 
 static volatile bool requested_stop;
@@ -204,6 +205,10 @@ public:
 
   void predict(std::vector<std::vector<string>> &hyp, const std::vector<std::string> & words,
                           const std::vector<std::string> & postags);
+
+  void output_sdp(const vector<unsigned>& sentence, const vector<unsigned>& pos,
+                  const vector<string>& sentenceUnkStrings, 
+                  const vector<vector<string>>& hyp);
 
   void output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
                   const vector<string>& sentenceUnkStrings, 
