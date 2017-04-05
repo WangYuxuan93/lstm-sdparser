@@ -205,10 +205,15 @@ public:
 
   void predict(std::vector<std::vector<string>> &hyp, const std::vector<std::string> & words,
                           const std::vector<std::string> & postags);
-
+  
   void output_sdp(const vector<unsigned>& sentence, const vector<unsigned>& pos,
                   const vector<string>& sentenceUnkStrings, 
                   const vector<vector<string>>& hyp);
+  
+  void output_sdp(const vector<unsigned>& sentence, const vector<unsigned>& pos,
+                  const vector<string>& sentenceUnkStrings, 
+                  const vector<vector<string>>& hyp,
+                  const int nsent);
 
   void output_conll(const vector<unsigned>& sentence, const vector<unsigned>& pos,
                   const vector<string>& sentenceUnkStrings, 

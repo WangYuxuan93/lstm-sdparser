@@ -1428,7 +1428,7 @@ void LSTMParser::test(string test_data_file) {
       //cerr<<"write to file" <<endl;
       //output_conll(sentence, sentencePos, sentenceUnkStr, hyp, sii);
       if (Opt.SDP_OUTPUT)
-        output_sdp(sentence, sentencePos, sentenceUnkStr, hyp);
+        output_sdp(sentence, sentencePos, sentenceUnkStr, hyp, sii);
       else
         output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
       //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
@@ -1505,7 +1505,7 @@ void LSTMParser::predict_dev() {
          cerr << "sentence: " << sii << endl;
       //cerr<<"write to file" <<endl;
       if (Opt.SDP_OUTPUT)
-        output_sdp(sentence, sentencePos, sentenceUnkStr, hyp);
+        output_sdp(sentence, sentencePos, sentenceUnkStr, hyp, sii);
       else
         output_conll(sentence, sentencePos, sentenceUnkStr, hyp);
       //correct_heads += compute_correct(ref, hyp, sentence.size() - 1);
@@ -1613,6 +1613,78 @@ void LSTMParser::output_sdp(const vector<unsigned>& sentence, const vector<unsig
           predicate.push_back(i);
         }
     }
+    for (unsigned i = 0; i < (sentence.size()-1); ++i) {
+        auto index = i + 1;
+        assert(i < sentenceUnkStrings.size() && 
+            ((sentence[i] == corpus.get_or_add_word(cpyp::Corpus::UNK) &&
+                sentenceUnkStrings[i].size() > 0) ||
+                (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
+                sentenceUnkStrings[i].size() == 0 &&
+                intToWords.find(sentence[i]) != intToWords.end())));
+
+        string wit = (sentenceUnkStrings[i].size() > 0)? 
+        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
+        auto pit = intToPos.find(pos[i]);
+        int nr_head = 0;
+        string pred_tag, top_tag;
+        if (find(predicate.begin(),predicate.end(),i)!=predicate.end())
+          pred_tag = "+";
+        else
+          pred_tag = "-";
+        if (hyp[sentence.size() - 1][i] == "ROOT")
+          top_tag = "+";
+        else
+          top_tag = "-";
+        cout << index << '\t'       // 1. ID 
+            << wit << '\t'         // 2. FORM
+            << "_" << '\t'         // 3. LEMMA 
+            << pit->second << '\t'        // 4. POSTAG 
+            << top_tag << '\t'  // 5. TOP
+            << pred_tag << '\t'         // 6. PREDICATE
+            << "_";    // 7. FEATS
+        for (unsigned j = 0; j < predicate.size() ; ++j){
+            unsigned pr = predicate[j];
+            if (hyp[pr][i] != lstmsdparser::REL_NULL &&
+              hyp[pr][i] != "-NULL-"){
+              ++ nr_head;
+              auto hyp_rel = hyp[pr][i];
+              cout << '\t' << hyp_rel;
+            }
+            else{
+              cout << "\t_";
+            }
+        }
+        cout << endl;
+  }
+  cout << endl;
+}
+
+void LSTMParser::output_sdp(const vector<unsigned>& sentence, const vector<unsigned>& pos,
+                  const vector<string>& sentenceUnkStrings, 
+                  const vector<vector<string>>& hyp,
+                  const int nsent) {
+    const map<unsigned, string>& intToWords = corpus.intToWords;
+    const map<unsigned, string>& intToPos = corpus.intToPos;
+    // bad way to output both dev and test
+    const vector<string>& Comm1 = corpus.sentencesCommDev[nsent];
+    const vector<string>& Comm2 = corpus.sentencesCommTest[nsent];
+    vector<int> predicate;
+    for (unsigned i = 0; i < (sentence.size()-1); ++i) {
+        auto index = i + 1;
+        int nr_dep = 0;
+        for (unsigned j = 0; j < sentence.size() ; ++j){
+          if (hyp[i][j] != lstmsdparser::REL_NULL &&
+              hyp[i][j] != "-NULL-")
+            ++ nr_dep;
+        }
+        if (nr_dep > 0){
+          predicate.push_back(i);
+        }
+    }
+    for (auto comment : Comm1)
+        cout << comment << endl;
+    for (auto comment : Comm2)
+        cout << comment << endl;
     for (unsigned i = 0; i < (sentence.size()-1); ++i) {
         auto index = i + 1;
         assert(i < sentenceUnkStrings.size() && 

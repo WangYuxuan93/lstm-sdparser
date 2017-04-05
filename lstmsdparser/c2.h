@@ -34,6 +34,7 @@ public:
   std::map<int,std::vector<unsigned>> sentencesDev;
   std::map<int,std::vector<unsigned>> sentencesPosDev;
   std::map<int,std::vector<std::string>> sentencesStrDev;
+  std::map<int,std::vector<std::string>> sentencesCommDev; // comments starts with #
   unsigned nsentencesDev;
 
   std::map<int,std::vector<unsigned>> sentencesTest;
@@ -43,6 +44,7 @@ public:
   std::map<int,std::vector<std::string>> sentencesXPosTest;
   std::map<int,std::vector<std::string>> sentencesFeatTest;
   std::map<int,std::vector<std::string>> sentencesMultTest;
+  std::map<int,std::vector<std::string>> sentencesCommTest;
   unsigned nsentencesTest;
 
   unsigned nsentences;
@@ -393,6 +395,7 @@ public:
     std::vector<unsigned> current_sent;
     std::vector<unsigned> current_sent_pos;
     std::vector<std::string> current_sent_str;
+    std::vector<std::string> current_sent_comm;
     bool is_tree = true;
     int ngraph = 0;
     std::map<int, std::vector<std::pair<int, std::string>>> graph;
@@ -425,13 +428,15 @@ public:
         current_sent_str.push_back("");
         sentencesDev[sentence] = current_sent;
         sentencesPosDev[sentence] = current_sent_pos;
-        sentencesStrDev[sentence] = current_sent_str;    
+        sentencesStrDev[sentence] = current_sent_str;
+        sentencesCommDev[sentence] = current_sent_comm;    
         sentence++;
         nsentencesDev = sentence;
 
         current_sent.clear();
         current_sent_pos.clear();
         current_sent_str.clear();
+        current_sent_comm.clear();
         graph.clear();
         if (!is_tree) ++ngraph;
         is_tree = true;
@@ -440,7 +445,10 @@ public:
         // one line in each sentence may look like:
         // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
         // read the every line
-        if (lineS[0] == '#') continue;
+        if (lineS[0] == '#') {
+          current_sent_comm.push_back(lineS);
+          continue;
+        }
         std::vector<std::string> items = split2(lineS,'\t');
         if (items[0].find('-') != std::string::npos) continue;
         if (items[0].find('.') != std::string::npos) continue;
@@ -501,7 +509,8 @@ public:
       current_sent_str.push_back("");
       sentencesDev[sentence] = current_sent;
       sentencesPosDev[sentence] = current_sent_pos;
-      sentencesStrDev[sentence] = current_sent_str;    
+      sentencesStrDev[sentence] = current_sent_str;
+      sentencesCommDev[sentence] = current_sent_comm;    
       sentence++;
       nsentencesDev = sentence;
       if (!is_tree) ++ngraph;
@@ -539,6 +548,7 @@ public:
     std::vector<std::string> current_sent_xpos;
     std::vector<std::string> current_sent_feat;
     std::vector<std::string> current_sent_mult; // for multiword like "1-2"
+    std::vector<std::string> current_sent_comm;
     while (getline(actionsFile, lineS)){
       ReplaceStringInPlace(lineS, "-RRB-", "_RRB_");
       ReplaceStringInPlace(lineS, "-LRB-", "_LRB_");
@@ -553,6 +563,7 @@ public:
         sentencesXPosTest[sentence] = current_sent_xpos;  
         sentencesFeatTest[sentence] = current_sent_feat;
         sentencesMultTest[sentence] = current_sent_mult;
+        sentencesCommTest[sentence] = current_sent_comm;
         sentence++;
         nsentencesTest = sentence;
 
@@ -563,12 +574,16 @@ public:
         current_sent_xpos.clear();
         current_sent_feat.clear();
         current_sent_mult.clear();
+        current_sent_comm.clear();
       } else {
       //stack and buffer, for now, leave it like this.
       // one line in each sentence may look like:
       // 5  American  american  ADJ JJ  Degree=Pos  6 amod  _ _
       // read the every line
-        if (lineS[0] == '#') continue;
+        if (lineS[0] == '#') {
+          current_sent_comm.push_back(lineS);
+          continue;
+        }
         std::vector<std::string> items = split2(lineS,'\t');
         if (items[0].find('.') != std::string::npos) continue;
         current_sent_mult.push_back("");
@@ -624,7 +639,8 @@ public:
       sentencesLemmaTest[sentence] = current_sent_lemma;  
       sentencesXPosTest[sentence] = current_sent_xpos;  
       sentencesFeatTest[sentence] = current_sent_feat;
-      sentencesMultTest[sentence] = current_sent_mult;     
+      sentencesMultTest[sentence] = current_sent_mult;
+      sentencesCommTest[sentence] = current_sent_comm;     
       sentence++;
       nsentencesTest = sentence;
     }
