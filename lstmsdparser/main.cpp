@@ -120,6 +120,7 @@ int main(int argc, char** argv) {
     << '_' << (Opt.USE_POS ? "pos" : "nopos")
     << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
     << '_' << (Opt.USE_TREELSTM ? "tr" : "notr")
+    << '_' << (Opt.USE_ATTENTION ? "att" : "noatt")
     << '_' << conf["data_type"].as<string>()
     << '_' << Opt.LAYERS
     << '_' << Opt.INPUT_DIM
