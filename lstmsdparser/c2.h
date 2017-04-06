@@ -295,9 +295,11 @@ public:
         unsigned id = std::atoi(items[0].c_str()) - 1;
         std::string word = items[1];
         std::string pos = items[3];
-        unsigned head = std::atoi(items[6].c_str()) - 1;
-        std::string rel = items[7];
-        graph[id].push_back(std::make_pair(head, rel));
+        if (!(items[6] == "_" || items[7] == "_")){
+          unsigned head = std::atoi(items[6].c_str()) - 1;
+          std::string rel = items[7];
+          graph[id].push_back(std::make_pair(head, rel));
+        }
         if (graph[id].size() > 1) {is_tree = false; continue;}
         // new POS tag
         if (posToInt[pos] == 0) {
@@ -408,6 +410,12 @@ public:
       ReplaceStringInPlace(lineS, "-RRB-", "_RRB_");
       ReplaceStringInPlace(lineS, "-LRB-", "_LRB_");
       if (lineS.empty()) {
+        /*for (unsigned i = 0; i < graph.size(); ++i){
+          std::cerr << "word:" << i << std::endl;
+          for (unsigned j = 0; j < graph[i].size(); ++j){
+            std::cerr << graph[i][j].first << ":" << graph[i][j].second << std::endl;
+          }
+        }*/
         std::vector<std::string> gold_acts;
         system->get_actions(graph, gold_acts);
         bool found=false;
@@ -455,9 +463,11 @@ public:
         unsigned id = std::atoi(items[0].c_str()) - 1;
         std::string word = items[1];
         std::string pos = items[3];
-        unsigned head = std::atoi(items[6].c_str()) - 1;
-        std::string rel = items[7];
-        graph[id].push_back(std::make_pair(head, rel));
+        if (!(items[6] == "_" || items[7] == "_")){
+          unsigned head = std::atoi(items[6].c_str()) - 1;
+          std::string rel = items[7];
+          graph[id].push_back(std::make_pair(head, rel));
+        }
         if (graph[id].size() > 1) {is_tree = false; continue;}
         // new POS tag
         if (posToInt[pos] == 0) {

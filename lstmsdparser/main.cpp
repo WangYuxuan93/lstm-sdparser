@@ -45,6 +45,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     ("lstm_input_dim", po::value<unsigned>()->default_value(200), "LSTM input dimension")
     ("post", "Should process headless words?")
     ("sdp_output", "Should output to sdp format? (CONLL08)")
+    ("has_head", "Is every word required to have at least one head?")
     ("train,t", "Should training be run?")
     ("words,w", po::value<string>()->default_value(""), "Pretrained word embeddings")
     ("help,h", "Help");
@@ -74,6 +75,7 @@ int main(int argc, char** argv) {
   Opt.USE_TREELSTM = conf.count("use_treelstm");
   Opt.POST_PROCESS = conf.count("post");
   Opt.SDP_OUTPUT = conf.count("sdp_output");
+  Opt.HAS_HEAD = conf.count("has_head");
   Opt.max_itr = conf["max_itr"].as<unsigned>();
   cerr << "Max training iteration: " << Opt.max_itr << endl;
   if (Opt.USE_BILSTM)

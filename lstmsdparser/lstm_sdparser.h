@@ -72,6 +72,7 @@ typedef struct Options {
   bool USE_TREELSTM; // false
   bool POST_PROCESS; // true
   bool SDP_OUTPUT; // false
+  bool HAS_HEAD; // false
 }Options;
 
 static volatile bool requested_stop;

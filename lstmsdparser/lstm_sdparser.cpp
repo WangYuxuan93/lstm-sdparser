@@ -18,7 +18,7 @@ std::string StrToLower(const std::string s){
 //struct LSTMParser {
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
-                              "list-tree", "", "4000", true, false, false, true, false}) {}
+                              "list-tree", "", "4000", true, false, false, true, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -239,7 +239,10 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
         if (a[0] == 'N'){
             if (a[1] == 'S' && bsize < 2) return true;
             //if (a[1] == 'S' && bsize == 2 && ssize > 2) return true;
-            if (a[1] == 'R' && !(ssize > 1 && s0_head_num > 0)) return true;
+            if (Opt.HAS_HEAD)
+              if (a[1] == 'R' && !(ssize > 1 && s0_head_num > 0)) return true;
+            else
+              if (a[1] == 'R' && !(ssize > 1)) return true;
             if (a[1] == 'P' && !(ssize > 1 && bsize > 1))  return true;
         }
         return false;
@@ -1767,7 +1770,7 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
                     << "_" << endl;        // 10. PDEPREL
             }
         }
-        if (nr_head == 0 && Opt.POST_PROCESS){
+        if (nr_head == 0 && !Opt.POST_PROCESS){
             cout << index << '\t'       // 1. ID 
                     << wit << '\t'         // 2. FORM
                     << "_" << '\t'         // 3. LEMMA 
