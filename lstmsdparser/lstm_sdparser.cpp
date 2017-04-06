@@ -104,8 +104,9 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   p_pass_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
   if (Opt.USE_BILSTM) {
     buffer_bilstm = BidirectionalLSTMLayer(model, Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.BILSTM_HIDDEN_DIM);
-    p_fwB = model.add_parameters({Opt.HIDDEN_DIM, Opt.BILSTM_HIDDEN_DIM});
-    p_bwB = model.add_parameters({Opt.HIDDEN_DIM, Opt.BILSTM_HIDDEN_DIM});
+    //p_fwB = model.add_parameters({Opt.HIDDEN_DIM, Opt.BILSTM_HIDDEN_DIM});
+    //p_bwB = model.add_parameters({Opt.HIDDEN_DIM, Opt.BILSTM_HIDDEN_DIM});
+    p_biB = model.add_parameters({Opt.HIDDEN_DIM, 2 * Opt.BILSTM_HIDDEN_DIM});
     cerr << "Created Buffer BiLSTM" << endl;
   }
   if (Opt.USE_TREELSTM) {
@@ -128,7 +129,7 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
     //p_t2l = nullptr;
   }
   if (Opt.USE_ATTENTION){
-    p_W_satb = model.add_parameters({1, 2 * Opt.HIDDEN_DIM});
+    p_W_satb = model.add_parameters({1, Opt.HIDDEN_DIM + 2 * Opt.BILSTM_HIDDEN_DIM});
     p_bias_satb = model.add_parameters({1});
   }
 
@@ -230,10 +231,10 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             if (has_path_to(s0, b0, dir_graph)) return true;
             //if (b0 == root && rel != "Root") return true;
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
+            if (b0 == (int)root && !((StrToLower(rel) == "root")
+                                     && root_num == 0 && s0_head_num == 0)) return true;
             //if (b0 == (int)root && !((StrToLower(rel) == "root" || StrToLower(rel) == "-null-")
-                                     //&& root_num == 0 && s0_head_num == 0)) return true;
-            if (b0 == (int)root && !((StrToLower(rel) == "root" || StrToLower(rel) == "-null-")
-                                     && s0_head_num == 0)) return true;
+                                     //&& s0_head_num == 0)) return true;
             if (b0 != (int)root && StrToLower(rel) == "root") return true;
         }
         if (a[0] == 'R'){
@@ -243,6 +244,7 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
         }
         if (a[0] == 'N'){
             if (a[1] == 'S' && bsize < 2) return true;
+            //if (a[1] == 'S' && b0 == (int)root && root_num < 1) return true; // have at least one root
             //if (a[1] == 'S' && bsize == 2 && ssize > 2) return true;
             if (Opt.HAS_HEAD && a[1] == 'R' && !(ssize > 2 && s0_head_num > 0)) return true;
             if (a[1] == 'R' && !(ssize > 2)) return true;
@@ -490,12 +492,14 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     action_lstm.new_graph(*hg);
     action_lstm.start_new_sequence();
 
-    Expression fwB;
-    Expression bwB;
+    //Expression fwB;
+    //Expression bwB;
+    Expression biB;
     if (Opt.USE_BILSTM){
       buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
-      fwB = parameter(*hg, p_fwB); // [bilstm]
-      bwB = parameter(*hg, p_bwB); // [bilstm]
+      biB = parameter(*hg, p_biB); // [bilstm]
+      //fwB = parameter(*hg, p_fwB); // [bilstm]
+      //bwB = parameter(*hg, p_bwB); // [bilstm]
     }else{
       buffer_lstm.new_graph(*hg);
       buffer_lstm.start_new_sequence();
@@ -612,19 +616,19 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
           || (transition_system == "swap" && (stacki.size() > 2 || bufferi.size() > 1))) {
       // get list of possible actions for the current parser state
       vector<unsigned> current_valid_actions;
-      /*if (!build_training_graph){
-      cerr << sent.size() << endl;
+      //if (!build_training_graph){
+      /*cerr << sent.size() << endl;
       cerr <<endl<<"[";
       for (int i = (int)stacki.size() - 1; i > -1 ; --i)
         cerr << corpus.intToWords[sent[stacki[i]]] <<"-"<<stacki[i]<<", ";
       cerr <<"][";
-      //for (int i = (int)passi.size() - 1; i > -1 ; --i)
-      //  cerr << corpus.intToWords[sent[passi[i]]]<<"-"<<passi[i]<<", ";
-      //cerr <<"][";
+      for (int i = (int)passi.size() - 1; i > -1 ; --i)
+        cerr << corpus.intToWords[sent[passi[i]]]<<"-"<<passi[i]<<", ";
+      cerr <<"][";
       for (int i = (int)bufferi.size() - 1; i > -1 ; --i)
         cerr << corpus.intToWords[sent[bufferi[i]]]<<"-"<<bufferi[i]<<", ";
-      cerr <<"]"<<endl;
-      //}*/
+      cerr <<"]"<<endl;*/
+      //}
       if (transition_system == "list-graph" || transition_system == "list-tree")
         for (auto a: possible_actions) {
           //cerr << " " << setOfActions[a]<< " ";
@@ -642,7 +646,29 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         }
 
       Expression p_t;
-      if (Opt.USE_BILSTM){
+      if (Opt.USE_ATTENTION && Opt.USE_BILSTM){
+        vector<Expression> c(2);
+        vector<Expression> alpha(bufferi.size() - 1);
+        vector<Expression> buf_mat(bufferi.size() - 1);
+        //c[0] = stack_lstm.back();
+        for (unsigned i = 1; i < bufferi.size(); ++i){ // buffer[0] is the guard
+          Expression b_fwh = bilstm_outputs[i].first;
+          Expression b_bwh = bilstm_outputs[i].second;
+          buf_mat[i - 1] = concatenate({b_fwh, b_bwh});
+          Expression s_b = concatenate({stack_lstm.back(), b_fwh, b_bwh});
+          alpha[i - 1] = rectify(affine_transform({bias_satb, W_satb, s_b}));
+        }
+        Expression a = concatenate(alpha);
+        Expression ae = softmax(a);
+        Expression buffer_mat = concatenate_cols(buf_mat);
+        Expression buf_rep = buffer_mat * ae; // (2 * bilstm_hidden_dim , 1)
+        if (transition_system == "list-graph" || transition_system == "list-tree")
+          // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
+          p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), biB, buf_rep, A, action_lstm.back()});
+        else if (transition_system == "swap")
+          p_t = affine_transform({pbias, S, stack_lstm.back(), biB, buf_rep, A, action_lstm.back()});
+      }
+      else if (Opt.USE_BILSTM){
         //cerr << "bilstm: " << bilstm_outputs.size() << " id: " 
         //<< sent.size() - bufferi.back() << " bufferi: " << bufferi.back() << endl;
         Expression fwbuf,bwbuf;
@@ -654,15 +680,20 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         fwbuf = bilstm_outputs[idx].first - bilstm_outputs[1].first;
         bwbuf = bilstm_outputs[1].second - bilstm_outputs[idx].second;
         // [bilstm] p_t = pbias + S * slstm + P * plstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
-        /*p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
-          fwB, bilstm_outputs[sent.size() - bufferi.back()].first, bwB, bilstm_outputs[sent.size() - bufferi.back()].second,
-          A, action_lstm.back()});*/
-        if (transition_system == "list-graph" || transition_system == "list-tree")
+        // [bilstm] p_t = pbias + S * slstm + P * plstm + biB * {blstm_fw + blstm_bw} + A * almst
+        Expression bibuf = concatenate({fwbuf, bwbuf});
+        if (transition_system == "list-graph" || transition_system == "list-tree"){
+          //p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+                                //fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
           p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
-                                fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
-        else if (transition_system == "swap")
-          p_t = affine_transform({pbias, S, stack_lstm.back(), fwB, fwbuf, bwB, bwbuf, 
+                                biB, bibuf, A, action_lstm.back()});
+        }
+        else if (transition_system == "swap"){
+          //p_t = affine_transform({pbias, S, stack_lstm.back(), fwB, fwbuf, bwB, bwbuf, 
+                                //A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, stack_lstm.back(), biB, bibuf, 
                                 A, action_lstm.back()});
+        }
         //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
       }else{
         if (transition_system == "list-graph" || transition_system == "list-tree")

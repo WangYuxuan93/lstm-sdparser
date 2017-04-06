@@ -109,8 +109,9 @@ public:
   Parameter p_pbias; // parser state bias
   Parameter p_A; // action lstm to parser state
   Parameter p_B; // buffer lstm to parser state
-  Parameter p_fwB; // [bilstm] buffer forward lstm to parser state
-  Parameter p_bwB; // [bilstm] buffer backward lstm to parser state
+  //Parameter p_fwB; // [bilstm] buffer forward lstm to parser state
+  //Parameter p_bwB; // [bilstm] buffer backward lstm to parser state
+  Parameter p_biB; // [bilstm] buffer concatenate fw and bw lstm to parser state
   Parameter p_P; // pass lstm to parser state
   Parameter p_S; // stack lstm to parser state
   Parameter p_H; // head matrix for composition function
@@ -129,7 +130,7 @@ public:
   Parameter p_pass_guard;  // end of pass buffer
   Parameter p_W_satb; // [attention] weight for stack top attending buffer
   Parameter p_bias_satb; // [attention] bias for stack top attending buffer
-  
+
   explicit LSTMParser();
   ~LSTMParser();
 
