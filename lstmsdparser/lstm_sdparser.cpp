@@ -244,8 +244,8 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
         if (a[0] == 'N'){
             if (a[1] == 'S' && bsize < 2) return true;
             //if (a[1] == 'S' && bsize == 2 && ssize > 2) return true;
-            if (Opt.HAS_HEAD && a[1] == 'R' && !(ssize > 1 && s0_head_num > 0)) return true;
-            if (a[1] == 'R' && !(ssize > 1)) return true;
+            if (Opt.HAS_HEAD && a[1] == 'R' && !(ssize > 2 && s0_head_num > 0)) return true;
+            if (a[1] == 'R' && !(ssize > 2)) return true;
             if (a[1] == 'P' && !(ssize > 1 && bsize > 1))  return true;
         }
         return false;
