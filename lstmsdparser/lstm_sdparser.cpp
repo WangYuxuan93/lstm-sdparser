@@ -18,7 +18,8 @@ std::string StrToLower(const std::string s){
 //struct LSTMParser {
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
-                              "list-tree", "", "4000", true, false, false, true, false, false}) {}
+                              "list-tree", "", "4000", true, false, false, false,
+                              true, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -125,6 +126,10 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
     use_pretrained = false;
     //p_t = nullptr;
     //p_t2l = nullptr;
+  }
+  if (Opt.USE_ATTENTION){
+    p_W_satb = model.add_parameters({1, 2 * Opt.HIDDEN_DIM});
+    p_bias_satb = model.add_parameters({1});
   }
 
   //this->model = model;
@@ -239,10 +244,8 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
         if (a[0] == 'N'){
             if (a[1] == 'S' && bsize < 2) return true;
             //if (a[1] == 'S' && bsize == 2 && ssize > 2) return true;
-            if (Opt.HAS_HEAD)
-              if (a[1] == 'R' && !(ssize > 1 && s0_head_num > 0)) return true;
-            else
-              if (a[1] == 'R' && !(ssize > 1)) return true;
+            if (Opt.HAS_HEAD && a[1] == 'R' && !(ssize > 1 && s0_head_num > 0)) return true;
+            if (a[1] == 'R' && !(ssize > 1)) return true;
             if (a[1] == 'P' && !(ssize > 1 && bsize > 1))  return true;
         }
         return false;
@@ -502,7 +505,12 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       tree_lstm.start_new_sequence(); // [treelstm]
       tree_lstm.initialize_structure(sent.size()); // [treelstm]
     }
-
+    Expression W_satb; // [attention]
+    Expression bias_satb;
+    if (Opt.USE_ATTENTION){
+      W_satb = parameter(*hg, p_W_satb);
+      bias_satb = parameter(*hg, p_bias_satb);
+    }
     // variables in the computation graph representing the parameters
     Expression pbias = parameter(*hg, p_pbias);
     Expression H = parameter(*hg, p_H);
@@ -666,7 +674,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       Expression nlp_t = rectify(p_t);
       // r_t = abias + p2a * nlp
       Expression r_t = affine_transform({abias, p2a, nlp_t});
-
       // adist = log_softmax(r_t, current_valid_actions)
       Expression adiste = log_softmax(r_t, current_valid_actions);
       vector<float> adist = as_vector(hg->incremental_forward(adiste));
@@ -730,7 +737,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         const char ac = actionString[0];
         const char ac2 = actionString[1];
         //cerr << ac << ac2 << endl;
-
         if (transition_system == "list-graph" || transition_system == "list-tree"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
                 assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
@@ -1256,7 +1262,7 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
     requested_stop = false;
     signal(SIGINT, signal_callback_handler);
     unsigned status_every_i_iterations = 100;
-    double best_LF = 0;
+    double best_LF = -1;
     bool softlinkCreated = false;
     SimpleSGDTrainer sgd(model);
     sgd.eta_decay = 0.08;
@@ -1469,7 +1475,6 @@ void LSTMParser::predict_dev() {
       std::vector<Expression> word_rep; // word representations
       Expression act_rep; // final action representation
       //cerr<<"compute action" << endl;
-
       {
       ComputationGraph cg;
       pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 

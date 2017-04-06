@@ -71,7 +71,7 @@ public:
   // String literals
   static constexpr const char* UNK = "UNK";
   static constexpr const char* BAD0 = "<BAD0>";
-  static constexpr const char* ROOT = "ROOT1";
+  static constexpr const char* ROOT = "ROOT";
 
   //! The tree type.
   typedef std::vector<std::vector<int> > tree_t;

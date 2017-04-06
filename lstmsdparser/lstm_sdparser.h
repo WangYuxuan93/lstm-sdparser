@@ -70,6 +70,7 @@ typedef struct Options {
 	bool USE_POS; // true
   bool USE_BILSTM; // false
   bool USE_TREELSTM; // false
+  bool USE_ATTENTION; // false
   bool POST_PROCESS; // true
   bool SDP_OUTPUT; // false
   bool HAS_HEAD; // false
@@ -126,7 +127,9 @@ public:
   Parameter p_buffer_guard;  // end of buffer
   Parameter p_stack_guard;  // end of stack
   Parameter p_pass_guard;  // end of pass buffer
-
+  Parameter p_W_satb; // [attention] weight for stack top attending buffer
+  Parameter p_bias_satb; // [attention] bias for stack top attending buffer
+  
   explicit LSTMParser();
   ~LSTMParser();
 
