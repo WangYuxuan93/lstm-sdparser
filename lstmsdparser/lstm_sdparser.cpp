@@ -1455,7 +1455,7 @@ void LSTMParser::test(string test_data_file) {
       }
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
       if (Opt.POST_PROCESS){
-        cerr << "POST PROCESS: processing headless words." << endl;
+        //cerr << "POST PROCESS: processing headless words." << endl;
         if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
             miss_head++;
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
@@ -1525,7 +1525,7 @@ void LSTMParser::predict_dev() {
       std::vector<std::vector<string>> ref = compute_heads(sentence, actions);
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
       if (Opt.POST_PROCESS){
-        cerr << "POST PROCESS: processing headless words." << endl;
+        //cerr << "POST PROCESS: processing headless words." << endl;
         if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
             miss_head++;
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
@@ -1623,7 +1623,7 @@ void LSTMParser::predict(std::vector<std::vector<string>> &hyp, const std::vecto
       hyp = compute_heads(sentence, pred);
       //cerr << "hyp length: " << hyp.size() << " " << hyp[0].size() << endl;
       if (Opt.POST_PROCESS){
-        cerr << "POST PROCESS: processing headless words." << endl;
+        //cerr << "POST PROCESS: processing headless words." << endl;
         if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
         }

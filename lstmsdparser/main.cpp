@@ -29,6 +29,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     ("use_pos_tags,P", "make POS tags visible to parser")
     ("use_bilstm,B", "use bilstm for buffer")
     ("use_treelstm,R", "use treelstm for subtree in stack")
+    ("use_attention,A", "use attention from stack top to whole buffer")
     ("data_type", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook), only for distinguishing model name")
     ("dynet_seed", po::value<string>(), "Dynet seed for initialization, random initialization if not specified")
     ("dynet_mem", po::value<string>()->default_value("4000"), "Dynet memory size (MB) for initialization")
@@ -73,6 +74,7 @@ int main(int argc, char** argv) {
   Opt.USE_POS = conf.count("use_pos_tags");
   Opt.USE_BILSTM = conf.count("use_bilstm");
   Opt.USE_TREELSTM = conf.count("use_treelstm");
+  Opt.USE_ATTENTION = conf.count("use_attention");
   Opt.POST_PROCESS = conf.count("post");
   Opt.SDP_OUTPUT = conf.count("sdp_output");
   Opt.HAS_HEAD = conf.count("has_head");
@@ -82,6 +84,10 @@ int main(int argc, char** argv) {
     cerr << "Using bilstm for buffer." << endl;
   if (Opt.USE_TREELSTM)
     cerr << "Using treelstm for subtree in stack." << endl;
+   if (Opt.USE_ATTENTION)
+    cerr << "Using attention." << endl;
+  if (Opt.POST_PROCESS)
+    cerr << "Using post processing." << endl;
   Opt.transition_system = conf["transition_system"].as<string>();
   cerr << "Transition System: " << Opt.transition_system << endl;
   Opt.LAYERS = conf["layers"].as<unsigned>();
