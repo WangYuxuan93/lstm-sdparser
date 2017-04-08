@@ -211,7 +211,8 @@ vector<unsigned> LSTMParser::get_children(unsigned id, const vector<vector<bool>
 
 bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, 
                                       unsigned root, const vector<vector<bool>> dir_graph, //const vector<bool>  dir_graph [], 
-                                      const vector<int>& stacki, const vector<int>& bufferi) {
+                                      const vector<int>& stacki, const vector<int>& bufferi,
+                                      unsigned nr_root_rel) {
     if (transition_system == "list-graph"){
         //cerr << a << endl;
         int s0 = stacki.back();
@@ -231,10 +232,13 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             if (has_path_to(s0, b0, dir_graph)) return true;
             //if (b0 == root && rel != "Root") return true;
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
-            if (b0 == (int)root && !((StrToLower(rel) == "root")
-                                     && root_num == 0 && s0_head_num == 0)) return true;
-            //if (b0 == (int)root && !((StrToLower(rel) == "root" || StrToLower(rel) == "-null-")
-                                     //&& s0_head_num == 0)) return true;
+            //if (b0 == (int)root && !((StrToLower(rel) == "root")
+                                     //&& root_num == 0 && s0_head_num == 0)) return true;
+            if (b0 == (int)root && 
+              !(((StrToLower(rel) == "root" && nr_root_rel == 0 ) 
+                || StrToLower(rel) == "-null-")
+                && s0_head_num == 0)) 
+              return true;
             if (b0 != (int)root && StrToLower(rel) == "root") return true;
         }
         if (a[0] == 'R'){
@@ -611,14 +615,15 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     for (int i = 0; i < (int)sent.size(); i++){
         dir_graph.push_back(v);
     }
+    unsigned nr_root_rel = 0;
     //remove stack.size() > 2 ||
     while(((transition_system == "list-graph" || transition_system == "list-tree") && bufferi.size() > 1)
           || (transition_system == "swap" && (stacki.size() > 2 || bufferi.size() > 1))) {
       // get list of possible actions for the current parser state
       vector<unsigned> current_valid_actions;
       //if (!build_training_graph){
-      /*cerr << sent.size() << endl;
-      cerr <<endl<<"[";
+      //cerr << sent.size() << endl;
+      /*cerr <<endl<<"[";
       for (int i = (int)stacki.size() - 1; i > -1 ; --i)
         cerr << corpus.intToWords[sent[stacki[i]]] <<"-"<<stacki[i]<<", ";
       cerr <<"][";
@@ -632,7 +637,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       if (transition_system == "list-graph" || transition_system == "list-tree")
         for (auto a: possible_actions) {
           //cerr << " " << setOfActions[a]<< " ";
-          if (IsActionForbidden(setOfActions[a], buffer.size(), stack.size(), sent.size() - 1, dir_graph, stacki, bufferi))
+          if (IsActionForbidden(setOfActions[a], buffer.size(), stack.size(), sent.size() - 1,
+             dir_graph, stacki, bufferi, nr_root_rel))
             continue;
           //cerr << " <" << setOfActions[a] << "> ";
           current_valid_actions.push_back(a);
@@ -844,6 +850,14 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                     pass_lstm.add_input(dep);
                     pass.push_back(dep);
                     passi.push_back(depi);
+                }
+                if (headi == sent.size() - 1) {// is head is root node
+                    string rel = actionString.substr(3, actionString.size() - 4);
+                    if (StrToLower(rel) == "root"){
+                      nr_root_rel ++;
+                      if (nr_root_rel > 1)
+                        cerr << "more than one root!" << endl;
+                    }
                 }
             } else if (ac=='R'){ // RIGHT-SHIFT or RIGHT-PASSA
                 assert(stacki.size() > 1 && bufferi.size() > 1);
@@ -1158,7 +1172,9 @@ void LSTMParser::get_best_label(const vector<unsigned>& sent, const vector<unsig
     vector<unsigned> current_valid_actions;
     for (auto a: possible_actions) {
         //cerr << " " << setOfActions[a]<< " ";
-        if (IsActionForbidden(setOfActions[a], buffer.size(), stack.size(), sent.size() - 1, dir_graph, stacki, bufferi))
+        // !!! no concern multi root
+        if (IsActionForbidden(setOfActions[a], buffer.size(), stack.size(), sent.size() - 1,
+           dir_graph, stacki, bufferi, 0))
             continue;
         //cerr << " <" << setOfActions[a] << "> ";
         current_valid_actions.push_back(a);

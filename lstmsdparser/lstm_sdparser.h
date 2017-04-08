@@ -147,8 +147,10 @@ public:
 
   vector<unsigned> get_children(unsigned id, const vector<vector<bool>> graph);
 
-  bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, const std::vector<std::vector<bool>> dir_graph,//const std::vector<bool>  dir_graph [], 
-                                                const std::vector<int>& stacki, const std::vector<int>& bufferi);
+  bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, 
+                          const std::vector<std::vector<bool>> dir_graph,//const std::vector<bool>  dir_graph [], 
+                          const std::vector<int>& stacki, const std::vector<int>& bufferi,
+                          unsigned nr_root_rel);
   std::vector<std::vector<string>> compute_heads(const std::vector<unsigned>& sent, const std::vector<unsigned>& actions);
 
   void apply_action( ComputationGraph* hg,

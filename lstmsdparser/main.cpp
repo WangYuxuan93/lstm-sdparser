@@ -88,6 +88,8 @@ int main(int argc, char** argv) {
     cerr << "Using attention." << endl;
   if (Opt.POST_PROCESS)
     cerr << "Using post processing." << endl;
+  if (Opt.HAS_HEAD)
+    cerr << "Every word should have at least one head." << endl;
   Opt.transition_system = conf["transition_system"].as<string>();
   cerr << "Transition System: " << Opt.transition_system << endl;
   Opt.LAYERS = conf["layers"].as<unsigned>();
