@@ -234,10 +234,12 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
             //if (b0 == (int)root && !((StrToLower(rel) == "root")
                                      //&& root_num == 0 && s0_head_num == 0)) return true;
-            if (b0 == (int)root && 
+            /*if (b0 == (int)root && 
               !(((StrToLower(rel) == "root" && nr_root_rel == 0 ) 
                 || StrToLower(rel) == "-null-")
-                && s0_head_num == 0)) 
+                && s0_head_num == 0)) */  // for sem15, root node may have other head
+              if (b0 == (int)root && 
+              !(StrToLower(rel) == "root" || StrToLower(rel) == "-null-"))
               return true;
             if (b0 != (int)root && StrToLower(rel) == "root") return true;
         }
@@ -855,8 +857,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                     string rel = actionString.substr(3, actionString.size() - 4);
                     if (StrToLower(rel) == "root"){
                       nr_root_rel ++;
-                      if (nr_root_rel > 1)
-                        cerr << "more than one root!" << endl;
+                      /*if (nr_root_rel > 1)
+                        cerr << "more than one root!" << endl;*/
                     }
                 }
             } else if (ac=='R'){ // RIGHT-SHIFT or RIGHT-PASSA
