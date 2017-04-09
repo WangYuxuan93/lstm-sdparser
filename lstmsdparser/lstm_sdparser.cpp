@@ -45,6 +45,8 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
     if (DEBUG)
       cerr << "Loading word embeddings from " << word_embedding_file << " with " << Opt.PRETRAINED_DIM << " dimensions\n";
     ifstream in(word_embedding_file.c_str());
+    if (!in)
+      cerr << "### File does not exist! ###" << endl;
     string line;
     getline(in, line);
     std::vector<float> v(Opt.PRETRAINED_DIM, 0);

@@ -212,7 +212,7 @@ public:
     std::ifstream actionsFile(file);
     //correct_act_sent=new vector<vector<unsigned>>();
     if (!actionsFile){
-      std::cerr << "File does not exist!" << std::endl;
+      std::cerr << "### File does not exist! ###" << std::endl;
     }
     std::string lineS;
 
@@ -387,7 +387,7 @@ public:
     std::ifstream actionsFile(file);
     //correct_act_sent=new vector<vector<unsigned>>();
     if (!actionsFile){
-      std::cerr << "File does not exist!" << std::endl;
+      std::cerr << "### File does not exist! ###" << std::endl;
     }
     std::string lineS;
 
@@ -544,7 +544,7 @@ public:
   inline void load_conll_fileTest(std::string file){
     std::ifstream actionsFile(file);
     if (!actionsFile){
-      std::cerr << "File does not exist!" << std::endl;
+      std::cerr << "### File does not exist! ###" << std::endl;
     }
     std::string lineS;
 
@@ -675,7 +675,7 @@ inline void load_correct_actions(std::string file){
   std::ifstream actionsFile(file);
   //correct_act_sent=new vector<vector<unsigned>>();
   if (!actionsFile){
-    std::cerr << "File does not exist!" << std::endl;
+    std::cerr << "### File does not exist! ###" << std::endl;
   }
   std::string lineS;
 	
@@ -855,7 +855,7 @@ inline unsigned get_or_add_word(const std::string& word) {
 inline void load_correct_actionsDev(std::string file) {
   std::ifstream actionsFile(file);
   if (!actionsFile){
-    std::cerr << "File does not exist!" << std::endl;
+    std::cerr << "### File does not exist! ###" << std::endl;
   }
   std::string lineS;
 
