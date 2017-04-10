@@ -7,6 +7,7 @@ using namespace dynet;
 using namespace std;
 namespace po = boost::program_options;
 
+//struct LSTMParser {
 std::string StrToLower(const std::string s){
   std::string str = s;
   for (int i = 0; i < str.length(); ++i){
@@ -14,8 +15,6 @@ std::string StrToLower(const std::string s){
   }
   return str;
 }
-
-//struct LSTMParser {
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
                               "list-tree", "", "4000", true, false, false, false,
@@ -37,7 +36,8 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   corpus.load_conll_file(training_data_file);
   if (DEBUG)
     cerr << "finish loading training data" << endl;
-
+  if (DEBUG)
+    cerr << "Number of words: " << corpus.nwords << endl;
   kUNK = corpus.get_or_add_word(cpyp::Corpus::UNK);
 
   if (word_embedding_file.length() > 0){
@@ -1746,15 +1746,16 @@ void LSTMParser::output_sdp(const vector<unsigned>& sentence, const vector<unsig
         cout << comment << endl;
     for (unsigned i = 0; i < (sentence.size()-1); ++i) {
         auto index = i + 1;
-        assert(i < sentenceUnkStrings.size() && 
+        /*assert(i < sentenceUnkStrings.size() && 
             ((sentence[i] == corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() > 0) ||
                 (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() == 0 &&
-                intToWords.find(sentence[i]) != intToWords.end())));
+                intToWords.find(sentence[i]) != intToWords.end())));*/
 
-        string wit = (sentenceUnkStrings[i].size() > 0)? 
-        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
+        /*string wit = (sentenceUnkStrings[i].size() > 0)? 
+        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;*/
+        string wit = sentenceUnkStrings[i];
         auto pit = intToPos.find(pos[i]);
         int nr_head = 0;
         string pred_tag, top_tag;
@@ -1797,15 +1798,16 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
     const map<unsigned, string>& intToPos = corpus.intToPos;
     for (unsigned i = 0; i < (sentence.size()-1); ++i) {
         auto index = i + 1;
-        assert(i < sentenceUnkStrings.size() && 
+        /*assert(i < sentenceUnkStrings.size() && 
             ((sentence[i] == corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() > 0) ||
                 (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() == 0 &&
-                intToWords.find(sentence[i]) != intToWords.end())));
+                intToWords.find(sentence[i]) != intToWords.end())));*/
 
-        string wit = (sentenceUnkStrings[i].size() > 0)? 
-        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
+        /*string wit = (sentenceUnkStrings[i].size() > 0)? 
+        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;*/
+        string wit = sentenceUnkStrings[i];
         auto pit = intToPos.find(pos[i]);
         int nr_head = 0;
         for (unsigned j = 0; j < sentence.size() ; ++j){
