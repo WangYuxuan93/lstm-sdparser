@@ -17,7 +17,7 @@ std::string StrToLower(const std::string s){
 }
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
-                              "list-tree", "", "4000", true, false, false, false,
+                              "sgd", "list-tree", "", "4000", true, false, false, false,
                               true, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
@@ -1315,8 +1315,16 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
     unsigned status_every_i_iterations = 100;
     double best_LF = -1;
     bool softlinkCreated = false;
-    SimpleSGDTrainer sgd(model);
-    sgd.eta_decay = 0.08;
+    Trainer* trainer;
+    if (Opt.optimizer == "sgd"){
+      trainer = new SimpleSGDTrainer(model);
+      trainer->eta_decay = 0.08;
+    }
+    else if (Opt.optimizer == "adam"){
+      trainer = new AdamTrainer(model);
+    }
+    //SimpleSGDTrainer sgd(model);
+    //sgd.eta_decay = 0.08;
     std::vector<unsigned> order(corpus.nsentences);
     for (unsigned i = 0; i < corpus.nsentences; ++i)
       order[i] = i;
@@ -1340,7 +1348,7 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
       for (unsigned sii = 0; sii < status_every_i_iterations; ++sii) {
           if (si == corpus.nsentences) {
              si = 0;
-             if (first) { first = false; } else { sgd.update_epoch(); }
+             if (first) { first = false; } else { trainer->update_epoch();/*sgd.update_epoch();*/ }
              cerr << "**SHUFFLE\n";
              random_shuffle(order.begin(), order.end());
           }
@@ -1364,12 +1372,14 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
              assert(lp >= 0.0);
           }
            hg.backward((VariableIndex)(hg.nodes.size() - 1));
-           sgd.update(1.0);
+           trainer->update(1.0);
+           //sgd.update(1.0);
            llh += lp;
            ++si;
            trs += actions.size();
       }
-      sgd.status();
+      trainer->status();
+      //sgd.status();
       //time_t time_now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
       time_t time_now = time(NULL);
       std::string t_n(asctime(localtime(&time_now))); 

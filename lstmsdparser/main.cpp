@@ -31,6 +31,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     ("use_treelstm,R", "use treelstm for subtree in stack")
     ("use_attention,A", "use attention from stack top to whole buffer")
     ("data_type", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook), only for distinguishing model name")
+    ("optimizer", po::value<string>()->default_value("sgd"), "Optimizer(sgd, adam)")
     ("dynet_seed", po::value<string>(), "Dynet seed for initialization, random initialization if not specified")
     ("dynet_mem", po::value<string>()->default_value("4000"), "Dynet memory size (MB) for initialization")
     ("model_dir", po::value<string>()->default_value(""), "Directory of model")
@@ -71,6 +72,7 @@ int main(int argc, char** argv) {
   po::variables_map conf;
   InitCommandLine(argc, argv, &conf);
   lstmsdparser::Options Opt;
+  Opt.optimizer = conf["optimizer"].as<string>();
   Opt.USE_POS = conf.count("use_pos_tags");
   Opt.USE_BILSTM = conf.count("use_bilstm");
   Opt.USE_TREELSTM = conf.count("use_treelstm");
@@ -80,6 +82,7 @@ int main(int argc, char** argv) {
   Opt.HAS_HEAD = conf.count("has_head");
   Opt.max_itr = conf["max_itr"].as<unsigned>();
   cerr << "Max training iteration: " << Opt.max_itr << endl;
+  cerr << "Using " << Opt.optimizer << " as optimizer." << endl;
   if (Opt.USE_BILSTM)
     cerr << "Using bilstm for buffer." << endl;
   if (Opt.USE_TREELSTM)
@@ -119,6 +122,7 @@ int main(int argc, char** argv) {
   ostringstream os;
   os << conf["model_dir"].as<string>()
     << "parser_" << Opt.transition_system
+    << '_' << Opt.optimizer
     << '_' << (Opt.USE_POS ? "pos" : "nopos")
     << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
     << '_' << (Opt.USE_TREELSTM ? "tr" : "notr")
