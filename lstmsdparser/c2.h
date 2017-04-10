@@ -503,7 +503,7 @@ public:
             word = Corpus::UNK;
           }
         }
-        current_sent_str[current_sent_str.size()-1] = word; // save word for [lower emb]
+        current_sent_str[current_sent_str.size()-1] = items[1]; // save word for [lower emb]
         current_sent.push_back(wordsToInt[word]);
         current_sent_pos.push_back(posToInt[pos]);
       }
