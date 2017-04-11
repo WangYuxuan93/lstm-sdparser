@@ -41,7 +41,7 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
     if (!in)
       cerr << "### File does not exist! ###" << endl;
     string line;
-    getline(in, line);
+    getline(in, line); // get the first info line
     std::vector<float> v(Opt.PRETRAINED_DIM, 0);
     string word;
     while (getline(in, line)) {
@@ -554,10 +554,24 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         args.push_back(p2l);
         args.push_back(p);
       }
-      if (use_pretrained && pretrained.count(raw_sent[i])) {  // include fixed pretrained vectors?
-        Expression t = const_lookup(*hg, p_t, raw_sent[i]);
-        args.push_back(t2l);
-        args.push_back(t);
+      if (use_pretrained) {  // include fixed pretrained vectors?
+        if (pretrained.count(raw_sent[i])){
+          Expression t = const_lookup(*hg, p_t, raw_sent[i]);
+          args.push_back(t2l);
+          args.push_back(t);
+          //cerr << "has embedding: " << corpus.intToWords[raw_sent[i]] << endl;
+        }
+        else{
+          unsigned lower_id = corpus.wordsToInt[cpyp::StrToLower(corpus.intToWords[raw_sent[i]])];
+          if (pretrained.count(lower_id)){
+            Expression t = const_lookup(*hg, p_t, raw_sent[i]);
+            args.push_back(t2l);
+            args.push_back(t);
+            //cerr << "lower has embedding: " << corpus.intToWords[lower_id] << endl;
+          }
+          //else cerr << "no embedding: " << corpus.intToWords[raw_sent[i]] << endl;
+        } 
+        
       }
       //buffer[] = ib + w2l * w + p2l * p + t2l * t
       buffer[sent.size() - i] = rectify(affine_transform(args));
@@ -1749,16 +1763,16 @@ void LSTMParser::output_sdp(const vector<unsigned>& sentence, const vector<unsig
         cout << comment << endl;
     for (unsigned i = 0; i < (sentence.size()-1); ++i) {
         auto index = i + 1;
-        /*assert(i < sentenceUnkStrings.size() && 
+        assert(i < sentenceUnkStrings.size() && 
             ((sentence[i] == corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() > 0) ||
                 (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() == 0 &&
-                intToWords.find(sentence[i]) != intToWords.end())));*/
+                intToWords.find(sentence[i]) != intToWords.end())));
 
-        /*string wit = (sentenceUnkStrings[i].size() > 0)? 
-        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;*/
-        string wit = sentenceUnkStrings[i];
+        string wit = (sentenceUnkStrings[i].size() > 0)? 
+        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
+        //string wit = sentenceUnkStrings[i];
         auto pit = intToPos.find(pos[i]);
         int nr_head = 0;
         string pred_tag, top_tag;
@@ -1801,16 +1815,16 @@ void LSTMParser::output_conll(const vector<unsigned>& sentence, const vector<uns
     const map<unsigned, string>& intToPos = corpus.intToPos;
     for (unsigned i = 0; i < (sentence.size()-1); ++i) {
         auto index = i + 1;
-        /*assert(i < sentenceUnkStrings.size() && 
+        assert(i < sentenceUnkStrings.size() && 
             ((sentence[i] == corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() > 0) ||
                 (sentence[i] != corpus.get_or_add_word(cpyp::Corpus::UNK) &&
                 sentenceUnkStrings[i].size() == 0 &&
-                intToWords.find(sentence[i]) != intToWords.end())));*/
+                intToWords.find(sentence[i]) != intToWords.end())));
 
-        /*string wit = (sentenceUnkStrings[i].size() > 0)? 
-        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;*/
-        string wit = sentenceUnkStrings[i];
+        string wit = (sentenceUnkStrings[i].size() > 0)? 
+        sentenceUnkStrings[i] : intToWords.find(sentence[i])->second;
+        //string wit = sentenceUnkStrings[i];
         auto pit = intToPos.find(pos[i]);
         int nr_head = 0;
         for (unsigned j = 0; j < sentence.size() ; ++j){

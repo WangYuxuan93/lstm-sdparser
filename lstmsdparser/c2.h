@@ -301,8 +301,8 @@ public:
         if (items[0].find('-') != std::string::npos) continue;
         if (items[0].find('.') != std::string::npos) continue;
         unsigned id = std::atoi(items[0].c_str()) - 1;
-        //std::string word = items[1];
-        std::string word = StrToLower(items[1]);
+        std::string word = items[1];
+        //std::string word = StrToLower(items[1]);
         std::string pos = items[3];
         if (!(items[6] == "_" || items[7] == "_")){
           unsigned head = std::atoi(items[6].c_str()) - 1;
@@ -442,8 +442,8 @@ public:
         }
         current_sent.push_back(wordsToInt[Corpus::ROOT]);
         current_sent_pos.push_back(posToInt[Corpus::ROOT]);
-        //current_sent_str.push_back("");
-        current_sent_str.push_back(Corpus::ROOT);
+        current_sent_str.push_back("");
+        //current_sent_str.push_back(Corpus::ROOT);
         sentencesDev[sentence] = current_sent;
         sentencesPosDev[sentence] = current_sent_pos;
         sentencesStrDev[sentence] = current_sent_str;
@@ -471,8 +471,8 @@ public:
         if (items[0].find('-') != std::string::npos) continue;
         if (items[0].find('.') != std::string::npos) continue;
         unsigned id = std::atoi(items[0].c_str()) - 1;
-        //std::string word = items[1];
-        std::string word = StrToLower(items[1]);
+        std::string word = items[1];
+        //std::string word = StrToLower(items[1]);
         std::string pos = items[3];
         if (!(items[6] == "_" || items[7] == "_")){
           unsigned head = std::atoi(items[6].c_str()) - 1;
@@ -503,7 +503,7 @@ public:
             word = Corpus::UNK;
           }
         }
-        current_sent_str[current_sent_str.size()-1] = items[1]; // save word for [lower emb]
+        //current_sent_str[current_sent_str.size()-1] = items[1]; // save word for [lower emb]
         current_sent.push_back(wordsToInt[word]);
         current_sent_pos.push_back(posToInt[pos]);
       }
@@ -528,8 +528,8 @@ public:
       }
       current_sent.push_back(wordsToInt[Corpus::ROOT]);
       current_sent_pos.push_back(posToInt[Corpus::ROOT]);
-      //current_sent_str.push_back("");
-      current_sent_str.push_back(Corpus::ROOT);
+      current_sent_str.push_back("");
+      //current_sent_str.push_back(Corpus::ROOT);
       sentencesDev[sentence] = current_sent;
       sentencesPosDev[sentence] = current_sent_pos;
       sentencesStrDev[sentence] = current_sent_str;
@@ -617,8 +617,8 @@ public:
           continue;
         }
         unsigned id = std::atoi(items[0].c_str()) - 1;
-        std::string word = StrToLower(items[1]);
-        //std::string word = items[1];
+        //std::string word = StrToLower(items[1]);
+        std::string word = items[1];
         std::string pos = items[3];
         if ( id < current_sent.size()) continue; // in case that the input has multihead
         current_sent_lemma.push_back(items[2]);
@@ -859,9 +859,9 @@ inline unsigned get_or_add_word(const std::string& word) {
   unsigned& id = wordsToInt[word];
   if (id == 0) {
     id = max;
-    ++max;
     intToWords[id] = word;
     nwords = max;
+    ++max;
   }
   return id;
 }
