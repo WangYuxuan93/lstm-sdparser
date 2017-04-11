@@ -44,7 +44,7 @@ constexpr const char* ROOT_SYMBOL = "ROOT";
 const std::string REL_NULL = "__NULL__";
 const std::string REL_EXIST = "__EXIST__";
 
-std::string StrToLower(const std::string s);
+//std::string StrToLower(const std::string s);
 
 typedef struct Sizes {
 	unsigned kROOT_SYMBOL;
