@@ -18,6 +18,14 @@
 
 namespace cpyp {
 
+  inline std::string StrToLower(const std::string s){
+    std::string str = s;
+    for (int i = 0; i < str.length(); ++i){
+      str[i] = tolower(str[i]);
+    }
+    return str;
+  }
+
 class Corpus {
  //typedef std::unordered_map<std::string, unsigned, std::hash<std::string> > Map;
 // typedef std::unordered_map<unsigned,std::string, std::hash<std::string> > ReverseMap;
@@ -98,14 +106,6 @@ public:
 
   void set_transition_system(std::string system){
     transition_system = system;
-  }
-
-  std::string Str2Lower(const std::string s){
-    std::string str = s;
-    for (int i = 0; i < str.length(); ++i){
-      str[i] = tolower(str[i]);
-    }
-    return str;
   }
 
   inline void split2(const std::string& source, const char& sep, 
@@ -302,7 +302,7 @@ public:
         if (items[0].find('.') != std::string::npos) continue;
         unsigned id = std::atoi(items[0].c_str()) - 1;
         //std::string word = items[1];
-        std::string word = Str2Lower(items[1]);
+        std::string word = StrToLower(items[1]);
         std::string pos = items[3];
         if (!(items[6] == "_" || items[7] == "_")){
           unsigned head = std::atoi(items[6].c_str()) - 1;
@@ -472,7 +472,7 @@ public:
         if (items[0].find('.') != std::string::npos) continue;
         unsigned id = std::atoi(items[0].c_str()) - 1;
         //std::string word = items[1];
-        std::string word = Str2Lower(items[1]);
+        std::string word = StrToLower(items[1]);
         std::string pos = items[3];
         if (!(items[6] == "_" || items[7] == "_")){
           unsigned head = std::atoi(items[6].c_str()) - 1;
@@ -617,7 +617,7 @@ public:
           continue;
         }
         unsigned id = std::atoi(items[0].c_str()) - 1;
-        std::string word = Str2Lower(items[1]);
+        std::string word = StrToLower(items[1]);
         //std::string word = items[1];
         std::string pos = items[3];
         if ( id < current_sent.size()) continue; // in case that the input has multihead

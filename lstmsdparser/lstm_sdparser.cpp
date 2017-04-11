@@ -8,13 +8,6 @@ using namespace std;
 namespace po = boost::program_options;
 
 //struct LSTMParser {
-std::string StrToLower(const std::string s){
-  std::string str = s;
-  for (int i = 0; i < str.length(); ++i){
-    str[i] = tolower(str[i]);
-  }
-  return str;
-}
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
                               "sgd", "list-tree", "", "4000", true, false, false, false,
@@ -234,16 +227,16 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             if (has_path_to(s0, b0, dir_graph)) return true;
             //if (b0 == root && rel != "Root") return true;
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
-            //if (b0 == (int)root && !((StrToLower(rel) == "root")
+            //if (b0 == (int)root && !((cpyp::StrToLower(rel) == "root")
                                      //&& root_num == 0 && s0_head_num == 0)) return true;
             /*if (b0 == (int)root && 
-              !(((StrToLower(rel) == "root" && nr_root_rel == 0 ) 
-                || StrToLower(rel) == "-null-")
+              !(((cpyp::StrToLower(rel) == "root" && nr_root_rel == 0 ) 
+                || cpyp::StrToLower(rel) == "-null-")
                 && s0_head_num == 0)) */  // for sem15, root node may have other head
               if (b0 == (int)root && 
-              !(StrToLower(rel) == "root" || StrToLower(rel) == "-null-"))
+              !(cpyp::StrToLower(rel) == "root" || cpyp::StrToLower(rel) == "-null-"))
               return true;
-            if (b0 != (int)root && StrToLower(rel) == "root") return true;
+            if (b0 != (int)root && cpyp::StrToLower(rel) == "root") return true;
         }
         if (a[0] == 'R'){
             if (bsize < 2 || ssize < 2) return true;
@@ -283,8 +276,8 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             if (has_path_to(s0, b0, dir_graph)) return true;
             //if (b0 == root && rel != "Root") return true;
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
-            if (b0 == (int)root && !(StrToLower(rel) == "root" && root_num == 0 && s0_head_num == 0)) return true;
-            if (b0 != (int)root && StrToLower(rel) == "root") return true;
+            if (b0 == (int)root && !(cpyp::StrToLower(rel) == "root" && root_num == 0 && s0_head_num == 0)) return true;
+            if (b0 != (int)root && cpyp::StrToLower(rel) == "root") return true;
             if (s0_head_num >= 1) return true; // add for original list-based
         }
         if (a[0] == 'R'){
@@ -325,7 +318,7 @@ bool LSTMParser::IsActionForbidden2(const string& a, unsigned bsize, unsigned ss
     //if (bsize == 1 && ssize == 3 && a[0] == 'R') return true;
     if (a[0] == 'L' || a[0] == 'R'){
         string rel = (a[0] == 'L') ? a.substr(9, a.size() - 10) : a.substr(10, a.size() - 11);
-        rel = StrToLower(rel);
+        rel = cpyp::StrToLower(rel);
 	if (bsize == 1 && ssize == 3 && a[0] == 'R' && rel != "root") return true;
 	if (bsize == 1 && ssize == 3 && a[0] == 'L' && rel != "root") return true; 
     }
@@ -857,7 +850,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 }
                 if (headi == sent.size() - 1) {// is head is root node
                     string rel = actionString.substr(3, actionString.size() - 4);
-                    if (StrToLower(rel) == "root"){
+                    if (cpyp::StrToLower(rel) == "root"){
                       nr_root_rel ++;
                       /*if (nr_root_rel > 1)
                         cerr << "more than one root!" << endl;*/
