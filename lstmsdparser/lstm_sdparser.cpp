@@ -564,7 +564,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         else{
           unsigned lower_id = corpus.wordsToInt[cpyp::StrToLower(corpus.intToWords[raw_sent[i]])];
           if (pretrained.count(lower_id)){
-            Expression t = const_lookup(*hg, p_t, raw_sent[i]);
+            Expression t = const_lookup(*hg, p_t, lower_id);
             args.push_back(t2l);
             args.push_back(t);
             //cerr << "lower has embedding: " << corpus.intToWords[lower_id] << endl;
