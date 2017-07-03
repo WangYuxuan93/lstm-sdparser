@@ -58,10 +58,10 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     cerr << dcmdline_options << endl;
     exit(1);
   }
-  if (conf->count("training_data") == 0) {
+  /*if (conf->count("training_data") == 0) {
     cerr << "Please specify --traing_data (-T): this is required to determine the vocabulary mapping, even if the parser is used in prediction mode.\n";
     exit(1);
-  }
+  }*/
 }
 
 int main(int argc, char** argv) {
@@ -123,10 +123,10 @@ int main(int argc, char** argv) {
   os << conf["model_dir"].as<string>()
     << "parser_" << Opt.transition_system
     << '_' << Opt.optimizer
-    << '_' << (Opt.USE_POS ? "pos" : "nopos")
-    << '_' << (Opt.USE_BILSTM ? "bs" : "nobs")
-    << '_' << (Opt.USE_TREELSTM ? "tr" : "notr")
-    << '_' << (Opt.USE_ATTENTION ? "att" : "noatt")
+    << (Opt.USE_POS ? "_pos" : "")
+    << (Opt.USE_BILSTM ? "_bs" : "")
+    << (Opt.USE_TREELSTM ? "_tr" : "")
+    << (Opt.USE_ATTENTION ? "_att" : "")
     << '_' << conf["data_type"].as<string>()
     << '_' << Opt.LAYERS
     << '_' << Opt.INPUT_DIM
@@ -145,10 +145,25 @@ int main(int argc, char** argv) {
   //parser -> set_options(Opt);
 
   parser->DEBUG = true;
-  if (conf.count("model") && conf.count("dev_data")){
+  parser -> set_options(Opt);
+
+  if (conf.count("train")){
+    parser -> load("", conf["training_data"].as<string>(), 
+                  conf["words"].as<string>(), conf["dev_data"].as<string>() );
+    parser -> train(fname, unk_strategy, unk_prob);
+    if (conf["dev_data"].as<string>().length() > 0) { // do test evaluation
+      parser -> predict_dev();
+    }
+  }
+  else if (conf.count("test_data")){
+    parser -> load_model(conf["model"].as<string>());
+    parser -> test(conf["test_data"].as<string>());
+  }
+
+  /*if (conf.count("model") && conf.count("dev_data")){
     parser -> set_options(Opt); // only for test
     parser -> load(conf["model"].as<string>(), conf["training_data"].as<string>(), 
-                  conf["words"].as<string>(), conf["dev_data"].as<string>() );
+                  conf["words"].as<string>(), conf["dev_data"].as<string>());
   }
   else if (conf.count("model") && conf.count("test_data")){
     parser -> set_options(Opt); // only for test
@@ -158,7 +173,7 @@ int main(int argc, char** argv) {
   else{
     parser -> set_options(Opt);
     parser -> load("", conf["training_data"].as<string>(), 
-                  conf["words"].as<string>(), conf["dev_data"].as<string>() );
+                  conf["words"].as<string>(), conf["dev_data"].as<string>());
   }
 
   // OOV words will be replaced by UNK tokens
@@ -173,6 +188,6 @@ int main(int argc, char** argv) {
   }
   if (conf.count("test_data")){
     parser->test(conf["test_data"].as<string>());
-  }
+  }*/
 }
 

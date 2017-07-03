@@ -21,6 +21,12 @@
 
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/set.hpp>
+#include <boost/serialization/unordered_map.hpp>
 #include <boost/program_options.hpp>
 
 #include "dynet/training.h"
@@ -30,8 +36,8 @@
 #include "dynet/lstm.h"
 #include "dynet/rnn.h"
 #include "lstmsdparser/c2.h"
-#include "lstmsdparser/layers.h"
-#include "lstmsdparser/theirtreelstm.h"
+#include "lstmsdparser/bilstm.h"
+#include "lstmsdparser/treelstm.h"
 
 namespace lstmsdparser {
 
@@ -135,11 +141,16 @@ public:
   explicit LSTMParser();
   ~LSTMParser();
 
+  // uni-model
+  bool save_model(string model_file);
+  bool load_model(string model_file, string dev_data_file = "");
   void set_options(Options opts);
   bool load(string model_file, string training_data_file, string word_embedding_file,
                         string dev_data_file = "");
 
   void get_dynamic_infos();
+  bool init_dynet();
+  bool setup_dynet();
 
   //bool has_path_to(int w1, int w2, const std::vector<bool>  dir_graph []);
   bool has_path_to(int w1, int w2, const std::vector<std::vector<bool>>& graph);
@@ -184,23 +195,21 @@ public:
                      const std::vector<string>& setOfActions,
                      const map<unsigned, std::string>& intToWords,
                      double *right, 
-                     std::vector<std::vector<string>>& cand,
-                     std::vector<Expression>* word_rep = NULL,
-                     Expression * act_rep = NULL);
+                     std::vector<std::vector<string>>& cand);
 
   bool IsActionForbidden2(const string& a, unsigned bsize, unsigned ssize, vector<int> stacki);
 
-  int process_headless(std::vector<std::vector<string>>& hyp, std::vector<std::vector<string>>& cand, std::vector<Expression>& word_rep, 
-                                    Expression& act_rep, const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos);
+  int process_headless(std::vector<std::vector<string>>& hyp, std::vector<std::vector<string>>& cand, 
+                        const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos);
 
   void process_headless_search_all(const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos, 
-                                                        const std::vector<string>& setOfActions, std::vector<Expression>& word_rep, 
-                                                        Expression& act_rep, int n, int sent_len, int dir, map<int, double>* scores, 
+                                                        const std::vector<string>& setOfActions,
+                                                        int n, int sent_len, int dir, map<int, double>* scores, 
                                                         map<int, string>* rels);
 
   void get_best_label(const std::vector<unsigned>& sent, const std::vector<unsigned>& sentPos, 
                                     ComputationGraph* hg, const std::vector<string>& setOfActions, 
-                                    int s0, int b0, std::vector<Expression>& word_rep, Expression& act_rep, int sent_size, 
+                                    int s0, int b0, int sent_size, 
                                     int dir, double *score, string *rel);
 
   static void signal_callback_handler(int /* signum */);

@@ -1,4 +1,4 @@
-#include "lstmsdparser/layers.h"
+#include "lstmsdparser/bilstm.h"
 
 BidirectionalLSTMLayer::BidirectionalLSTMLayer(dynet::Model& model,
 	unsigned n_lstm_layers,

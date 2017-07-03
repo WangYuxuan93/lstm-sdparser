@@ -54,8 +54,129 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   }
 
   get_dynamic_infos();
+  if (!init_dynet()) cerr << "### fail in initializing dynet! ###" << endl;
+  if (!setup_dynet()) cerr << "### fail in setting up dynet! ###" << endl;
+  //this->model = model;
+  if (model_file.length() > 0) {
+    if (DEBUG)
+      cerr << "loading model from " << model_file << endl;
+    ifstream in(model_file.c_str());
+    //boost::archive::text_iarchive ia(in);
+    boost::archive::binary_iarchive ia(in);
+    ia >> this->model;
+    if (DEBUG)
+      cerr << "finish loading model" << endl;
+  }
+  if (dev_data_file.length() > 0){
+    if (DEBUG)
+      cerr << "loading dev data from " << dev_data_file << endl;
+    //corpus.load_correct_actionsDev(dev_data_file);
+    corpus.load_conll_fileDev(dev_data_file);
+    if (DEBUG)
+      cerr << "finish loading dev data" << endl;
+  }
+  return true;
+}
+
+bool LSTMParser::save_model(string model_file){
+  std::ofstream out(model_file.c_str());
+  boost::archive::binary_oarchive oa(out);
+  //cerr << "nword: " << corpus.nwords << " nact: " << corpus.nactions 
+  //<< " npos: " << corpus.npos << endl;
+
+  oa << corpus.nwords;
+  oa << corpus.nactions;
+  oa << corpus.npos;
+
+  oa << corpus.max;
+  oa << corpus.maxPos;
+
+  oa << corpus.wordsToInt;
+  oa << corpus.intToWords;
+  oa << corpus.actions;
+
+  oa << corpus.posToInt;
+  oa << corpus.intToPos;
+
+  oa << pretrained;
+  oa << training_vocab;
+
+  oa << model;
+
+  return true;
+}
+
+bool LSTMParser::load_model(string model_file, string dev_data_file){
+  time_t time_now = time(NULL);
+  std::string t_n(asctime(localtime(&time_now))); 
+  cerr << "[" << t_n.substr(0, t_n.size() - 1) << "] " 
+      << "Loading model from " << model_file << endl;
+
+  this->transition_system = Opt.transition_system;
+  corpus.set_transition_system(Opt.transition_system);
+
+  std::ifstream in(model_file.c_str());
+  if (!in){
+    std::cerr << "### File does not exist! ###" << std::endl;
+  }
+  boost::archive::binary_iarchive ia(in); 
+
+  ia >> corpus.nwords;
+  ia >> corpus.nactions;
+  ia >> corpus.npos;
+
+  ia >> corpus.max;
+  ia >> corpus.maxPos;
+
+  ia >> corpus.wordsToInt;
+  ia >> corpus.intToWords;
+  ia >> corpus.actions;
+
+  ia >> corpus.posToInt;
+  ia >> corpus.intToPos;
+
+  ia >> pretrained;
+  ia >> training_vocab;
+  
+  //cerr << "nword: " << corpus.nwords << " nact: " << corpus.nactions 
+  //<< " npos: " << corpus.npos << endl;
+  kUNK = corpus.get_or_add_word(cpyp::Corpus::UNK);
+
+  // from get_dynamic_infos
   if (DEBUG)
-    cerr << "Setup model in dynet" << endl;
+    cerr << "Number of words: " << corpus.nwords 
+        << "\nNumber of POS: " << corpus.npos << endl;
+  System_size.VOCAB_SIZE = corpus.nwords + 20;
+  //ACTION_SIZE = corpus.nactions + 1;
+  System_size.ACTION_SIZE = corpus.nactions + 30; // leave places for new actions in test set
+  System_size.POS_SIZE = corpus.npos + 10;  // bad way of dealing with the fact that we may see new POS tags in the test set
+  //if (Opt.USE_CLUSTER) System_size.CLUSTER_SIZE = corpus.nclusters + 1;
+
+  possible_actions.resize(corpus.nactions);
+  for (unsigned i = 0; i < corpus.nactions; ++i)
+    possible_actions[i] = i;
+
+  if (!init_dynet()) cerr << "### fail in initializing dynet! ###" << endl;
+  if (!setup_dynet()) cerr << "### fail in setting up dynet! ###" << endl;
+
+  // continue to load model
+  ia >> this->model;
+  if (DEBUG)
+    cerr << "finish loading model" << endl;
+  
+  if (dev_data_file.length() > 0){
+    if (DEBUG)
+      cerr << "loading dev data from " << dev_data_file << endl;
+    //corpus.load_correct_actionsDev(dev_data_file);
+    corpus.load_conll_fileDev(dev_data_file);
+    if (DEBUG)
+      cerr << "finish loading dev data" << endl;
+  }
+  return true;
+}
+
+bool LSTMParser::init_dynet(){
+
   //allocate memory for dynet
   char ** dy_argv = new char * [6];
   int dy_argc = 3;
@@ -72,6 +193,12 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
   dynet::initialize(dy_argc, dy_argv);
   delete dy_argv;
   //dynet::initialize(dyparams);
+  return true;
+}
+
+bool LSTMParser::setup_dynet() {
+  if (DEBUG)
+    cerr << "Setup model in dynet" << endl;
 
   stack_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
   buffer_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
@@ -127,29 +254,10 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
     p_W_satb = model.add_parameters({1, Opt.HIDDEN_DIM + 2 * Opt.BILSTM_HIDDEN_DIM});
     p_bias_satb = model.add_parameters({1});
   }
-
-  //this->model = model;
-  if (model_file.length() > 0) {
-    if (DEBUG)
-      cerr << "loading model from " << model_file << endl;
-    ifstream in(model_file.c_str());
-    boost::archive::text_iarchive ia(in);
-    ia >> this->model;
-    if (DEBUG)
-      cerr << "finish loading model" << endl;
-  }
-  if (dev_data_file.length() > 0){
-    if (DEBUG)
-      cerr << "loading dev data from " << dev_data_file << endl;
-    //corpus.load_correct_actionsDev(dev_data_file);
-    corpus.load_conll_fileDev(dev_data_file);
-    if (DEBUG)
-      cerr << "finish loading dev data" << endl;
-  }
   return true;
 }
 
-void LSTMParser::get_dynamic_infos(){
+void LSTMParser::get_dynamic_infos() {
   
   System_size.kROOT_SYMBOL = corpus.get_or_add_word(lstmsdparser::ROOT_SYMBOL);
 
@@ -462,21 +570,12 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                      const vector<string>& setOfActions,
                      const map<unsigned, std::string>& intToWords,
                      double *right, 
-                     vector<vector<string>>& cand,
-                     vector<Expression>* word_rep,
-                     Expression * act_rep) {
+                     vector<vector<string>>& cand) {
     //const vector<string> setOfActions = corpus.actions;
     //const map<unsigned, std::string> intToWords = corpus.intToWords;
 
     vector<unsigned> results;
     const bool build_training_graph = correct_actions.size() > 0;
-    //init word representation
-    if (word_rep){
-        for (unsigned i = 0; i < sent.size(); ++i){
-            Expression wd;
-            (*word_rep).push_back(wd);
-        }
-    }
     //init candidate
     vector<string> cv;
     for (unsigned i = 0; i < sent.size(); ++i)
@@ -806,8 +905,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 bufferi.pop_back();
             } else if (ac=='N' && ac2=='R'){
                 assert(stacki.size() > 1);
-                if (word_rep)
-                    (*word_rep)[stacki.back()] = stack.back();
                 stack.pop_back();
                 stacki.pop_back();
                 stack_lstm.rewind_one_step();
@@ -853,10 +950,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
                 }
                 buffer.push_back(nlcomposed);
                 bufferi.push_back(headi);
-                if (ac2 == 'R'){
-                    if (word_rep)
-                        (*word_rep)[depi] = dep;
-                }
                 if (ac2 == 'P'){ // LEFT-PASS
                     pass_lstm.add_input(dep);
                     pass.push_back(dep);
@@ -938,13 +1031,6 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     assert(bufferi.size() == 1);
     Expression tot_neglogprob = -sum(log_probs);
     assert(tot_neglogprob.pg != nullptr);
-    //collect word representation 
-    if (word_rep)
-        for (unsigned i = 1; i < stack.size(); ++i) // do not collect stack_guard
-            (*word_rep)[stacki[i]] = stack[i];
-    //collect action representation
-    if (act_rep)
-        *act_rep = action_lstm.back();
     return results;
   }
 
@@ -1067,8 +1153,8 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
   }
 
   void LSTMParser::process_headless_search_all(const vector<unsigned>& sent, const vector<unsigned>& sentPos, 
-                                                        const vector<string>& setOfActions, vector<Expression>& word_rep, 
-                                                        Expression& act_rep, int n, int sent_len, int dir, map<int, double>* scores, 
+                                                        const vector<string>& setOfActions, 
+                                                        int n, int sent_len, int dir, map<int, double>* scores, 
                                                         map<int, string>* rels){
         for (int i = n + dir; i >= 0 && i < sent_len; i += dir){
             int s0 = (dir > 0 ? n : i);
@@ -1076,7 +1162,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
             double score;
             string rel;
             ComputationGraph cg;
-            get_best_label(sent, sentPos, &cg, setOfActions, s0, b0, word_rep , act_rep, sent_len, dir, &score, &rel);
+            get_best_label(sent, sentPos, &cg, setOfActions, s0, b0, sent_len, dir, &score, &rel);
             (*scores)[i] = score;
             (*rels)[i] = rel;
             //cerr << "search all n: " << n << " i: " << i << "rel: " << rel << endl;
@@ -1085,7 +1171,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
 void LSTMParser::get_best_label(const vector<unsigned>& sent, const vector<unsigned>& sentPos, 
                                     ComputationGraph* hg, const vector<string>& setOfActions, 
-                                    int s0, int b0, vector<Expression>& word_rep, Expression& act_rep, int sent_size, 
+                                    int s0, int b0, int sent_size, 
                                     int dir, double *score, string *rel) {
     char prefix = (dir > 0 ? 'L' : 'R');
     //init graph connecting vector
@@ -1216,8 +1302,8 @@ void LSTMParser::get_best_label(const vector<unsigned>& sent, const vector<unsig
     *rel = second_a;
   }
 
-int LSTMParser::process_headless(vector<vector<string>>& hyp, vector<vector<string>>& cand, vector<Expression>& word_rep, 
-                                    Expression& act_rep, const vector<unsigned>& sent, const vector<unsigned>& sentPos){
+int LSTMParser::process_headless(vector<vector<string>>& hyp, vector<vector<string>>& cand, 
+                                   const vector<unsigned>& sent, const vector<unsigned>& sentPos){
     //cerr << "process headless" << endl;
     const vector<string>& setOfActions = corpus.actions;
     int root = hyp.size() - 1;
@@ -1258,8 +1344,8 @@ int LSTMParser::process_headless(vector<vector<string>>& hyp, vector<vector<stri
 
                 map<int, double> scores;
                 map<int, string> rels;
-                process_headless_search_all(sent, sentPos, setOfActions, word_rep, act_rep, i, (int)(hyp.size()), 1, &scores, &rels);
-                process_headless_search_all(sent, sentPos, setOfActions, word_rep, act_rep, i, (int)(hyp.size()), -1, &scores, &rels);
+                process_headless_search_all(sent, sentPos, setOfActions, i, (int)(hyp.size()), 1, &scores, &rels);
+                process_headless_search_all(sent, sentPos, setOfActions, i, (int)(hyp.size()), -1, &scores, &rels);
                 if (root_num >0)
                     scores[root] = -DBL_MAX;
                 double opt_score = -DBL_MAX;
@@ -1443,9 +1529,10 @@ void LSTMParser::train(const std::string fname, const unsigned unk_strategy,
         if (results["LF"] > best_LF) {
           cerr << "---saving model to " << fname << "---" << endl;
           best_LF = results["LF"];
-          ofstream out(fname);
-          boost::archive::text_oarchive oa(out);
-          oa << model;
+          save_model(fname);
+          //ofstream out(fname);
+          //boost::archive::text_oarchive oa(out);
+          //oa << model;
           // Create a soft link to the most recent model in order to make it
           // easier to refer to it in a shell script.
           if (!softlinkCreated) {
@@ -1482,18 +1569,16 @@ void LSTMParser::test(string test_data_file) {
         if (training_vocab.count(w) == 0) w = kUNK;
       std::vector<unsigned> pred;
       std::vector<std::vector<string>> cand;
-      std::vector<Expression> word_rep; // word representations
-      Expression act_rep; // final action representation
       //cerr<<"compute action" << endl;
       {
       ComputationGraph cg;
       pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
-                              corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
+                              corpus.actions,corpus.intToWords, &right, cand);
       }
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
       if (Opt.POST_PROCESS){
         //cerr << "POST PROCESS: processing headless words." << endl;
-        if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+        if (process_headless(hyp, cand, sentence, sentencePos) > 0) {
             miss_head++;
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
         }
@@ -1540,13 +1625,11 @@ void LSTMParser::predict_dev() {
       double lp = 0;
       std::vector<unsigned> pred;
       std::vector<std::vector<string>> cand;
-      std::vector<Expression> word_rep; // word representations
-      Expression act_rep; // final action representation
       //cerr<<"compute action" << endl;
       {
       ComputationGraph cg;
       pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
-                              corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
+                              corpus.actions,corpus.intToWords, &right, cand);
       }
       /*cerr << cand.size() << endl;
       for (unsigned i = 0; i < cand.size(); ++i){
@@ -1563,7 +1646,7 @@ void LSTMParser::predict_dev() {
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
       if (Opt.POST_PROCESS){
         //cerr << "POST PROCESS: processing headless words." << endl;
-        if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+        if (process_headless(hyp, cand, sentence, sentencePos) > 0) {
             miss_head++;
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
         }
@@ -1649,19 +1732,17 @@ void LSTMParser::predict(std::vector<std::vector<string>> &hyp, const std::vecto
         if (training_vocab.count(w) == 0) w = kUNK;
       std::vector<unsigned> pred;
       std::vector<std::vector<string>> cand;
-      std::vector<Expression> word_rep; // word representations
-      Expression act_rep; // final action representation
       double right = 0;
       {
       ComputationGraph cg;
       pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
-                              corpus.actions,corpus.intToWords, &right, cand, &word_rep, &act_rep);
+                              corpus.actions,corpus.intToWords, &right, cand);
       }
       hyp = compute_heads(sentence, pred);
       //cerr << "hyp length: " << hyp.size() << " " << hyp[0].size() << endl;
       if (Opt.POST_PROCESS){
         //cerr << "POST PROCESS: processing headless words." << endl;
-        if (process_headless(hyp, cand, word_rep, act_rep, sentence, sentencePos) > 0) {
+        if (process_headless(hyp, cand, sentence, sentencePos) > 0) {
             cerr << corpus.intToWords[sentence[0]] << corpus.intToWords[sentence[1]]<< endl;
         }
       }

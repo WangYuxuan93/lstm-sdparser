@@ -1,4 +1,4 @@
-#include "lstmsdparser/theirtreelstm.h"
+#include "lstmsdparser/treelstm.h"
 
 #include <string>
 #include <cassert>
