@@ -161,10 +161,10 @@ public:
 
   bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, 
                           const std::vector<std::vector<bool>> dir_graph,//const std::vector<bool>  dir_graph [], 
-                          const std::vector<int>& stacki, const std::vector<int>& bufferi,
-                          unsigned nr_root_rel);
+                          const std::vector<int>& stacki, const std::vector<int>& bufferi);
   std::vector<std::vector<string>> compute_heads(const std::vector<unsigned>& sent, const std::vector<unsigned>& actions);
 
+  // for swap-based algorithm
   void apply_action( ComputationGraph* hg,
                    LSTMBuilder& stack_lstm,
                    LSTMBuilder& buffer_lstm,
@@ -186,6 +186,32 @@ public:
                    string* rootword,
                    vector<vector<bool>>& graph,
                    const vector<Expression>& word_emb);
+
+  // for list-based algorithms
+  void apply_action( ComputationGraph* hg,
+                   LSTMBuilder& stack_lstm,
+                   LSTMBuilder& buffer_lstm,
+                   LSTMBuilder& action_lstm,
+                   TheirTreeLSTMBuilder& tree_lstm,
+                   vector<Expression>& buffer,
+                   vector<int>& bufferi,
+                   vector<Expression>& stack,
+                   vector<int>& stacki,
+                   vector<unsigned>& results,
+                   unsigned action,
+                   const vector<string>& setOfActions,
+                   const vector<unsigned>& sent,  // sent with oovs replaced
+                   const map<unsigned, std::string>& intToWords,
+                   const Expression& cbias,
+                   const Expression& H,
+                   const Expression& D,
+                   const Expression& R,
+                   string* rootword,
+                   vector<vector<bool>>& graph,
+                   const vector<Expression>& word_emb,
+                   LSTMBuilder& pass_lstm,
+                   vector<Expression>& pass,
+                   vector<int>& passi);
 
   std::vector<unsigned> log_prob_parser(ComputationGraph* hg,
                      const std::vector<unsigned>& raw_sent,  // raw sentence
