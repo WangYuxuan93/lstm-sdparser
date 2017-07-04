@@ -83,25 +83,7 @@ typedef struct Options {
   bool HAS_HEAD; // false
 }Options;
 
-static volatile bool requested_stop;
-
-class LSTMParser {
-public:
-  bool DEBUG = false;
-  cpyp::Corpus corpus;
-  vector<unsigned> possible_actions;
-	unordered_map<unsigned, vector<float>> pretrained;
-	Options Opt;
-	Sizes System_size;
-	std::string transition_system;
-  Model model;
-
-  bool use_pretrained; // True if use pretraiend word embedding
-  
-  unsigned kUNK;
-  set<unsigned> training_vocab; // words available in the training corpus
-  set<unsigned> singletons;
-
+typedef struct Parameters {
   LSTMBuilder stack_lstm; // (layers, input, hidden, trainer)
   LSTMBuilder buffer_lstm;
   LSTMBuilder pass_lstm; // lstm for pass buffer
@@ -137,6 +119,28 @@ public:
   Parameter p_pass_guard;  // end of pass buffer
   Parameter p_W_satb; // [attention] weight for stack top attending buffer
   Parameter p_bias_satb; // [attention] bias for stack top attending buffer
+} Parameters;
+
+static volatile bool requested_stop;
+
+class LSTMParser {
+public:
+  bool DEBUG = false;
+  cpyp::Corpus corpus;
+  vector<unsigned> possible_actions;
+	unordered_map<unsigned, vector<float>> pretrained;
+	Options Opt;
+	Sizes System_size;
+	std::string transition_system;
+  Model model;
+
+  bool use_pretrained; // True if use pretraiend word embedding
+  
+  unsigned kUNK;
+  set<unsigned> training_vocab; // words available in the training corpus
+  set<unsigned> singletons;
+
+  Parameters params;
 
   explicit LSTMParser();
   ~LSTMParser();
@@ -150,7 +154,7 @@ public:
 
   void get_dynamic_infos();
   bool init_dynet();
-  bool setup_dynet();
+  bool setup_dynet(Model & model, Parameters & params);
 
   //bool has_path_to(int w1, int w2, const std::vector<bool>  dir_graph []);
   bool has_path_to(int w1, int w2, const std::vector<std::vector<bool>>& graph);

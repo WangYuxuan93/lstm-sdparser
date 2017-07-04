@@ -55,7 +55,7 @@ bool LSTMParser::load(string model_file, string training_data_file, string word_
 
   get_dynamic_infos();
   if (!init_dynet()) cerr << "### fail in initializing dynet! ###" << endl;
-  if (!setup_dynet()) cerr << "### fail in setting up dynet! ###" << endl;
+  if (!setup_dynet(model, params)) cerr << "### fail in setting up dynet! ###" << endl;
   //this->model = model;
   if (model_file.length() > 0) {
     if (DEBUG)
@@ -157,7 +157,7 @@ bool LSTMParser::load_model(string model_file, string dev_data_file){
     possible_actions[i] = i;
 
   if (!init_dynet()) cerr << "### fail in initializing dynet! ###" << endl;
-  if (!setup_dynet()) cerr << "### fail in setting up dynet! ###" << endl;
+  if (!setup_dynet(model, params)) cerr << "### fail in setting up dynet! ###" << endl;
 
   // continue to load model
   ia >> this->model;
@@ -196,63 +196,63 @@ bool LSTMParser::init_dynet(){
   return true;
 }
 
-bool LSTMParser::setup_dynet() {
+bool LSTMParser::setup_dynet(Model & model, Parameters & params) {
   if (DEBUG)
     cerr << "Setup model in dynet" << endl;
 
-  stack_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
-  buffer_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
-  pass_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
-  action_lstm = LSTMBuilder(Opt.LAYERS, Opt.ACTION_DIM, Opt.HIDDEN_DIM, model);
-  p_w = model.add_lookup_parameters(System_size.VOCAB_SIZE, {Opt.INPUT_DIM});
-  p_a = model.add_lookup_parameters(System_size.ACTION_SIZE, {Opt.ACTION_DIM});
-  p_r = model.add_lookup_parameters(System_size.ACTION_SIZE, {Opt.REL_DIM});
-  p_pbias = model.add_parameters({Opt.HIDDEN_DIM});
-  p_A = model.add_parameters({Opt.HIDDEN_DIM, Opt.HIDDEN_DIM});
-  p_B = model.add_parameters({Opt.HIDDEN_DIM, Opt.HIDDEN_DIM});
-  p_P = model.add_parameters({Opt.HIDDEN_DIM, Opt.HIDDEN_DIM});
-  p_S = model.add_parameters({Opt.HIDDEN_DIM, Opt.HIDDEN_DIM});
-  p_H = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.LSTM_INPUT_DIM});
-  p_D = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.LSTM_INPUT_DIM});
-  p_R = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.REL_DIM});
-  p_w2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.INPUT_DIM});
-  p_ib = model.add_parameters({Opt.LSTM_INPUT_DIM});
-  p_cbias = model.add_parameters({Opt.LSTM_INPUT_DIM});
-  p_p2a = model.add_parameters({System_size.ACTION_SIZE, Opt.HIDDEN_DIM});
-  p_action_start = model.add_parameters({Opt.ACTION_DIM});
-  p_abias = model.add_parameters({System_size.ACTION_SIZE});
-  p_buffer_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
-  p_stack_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
-  p_pass_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
+  params.stack_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
+  params.buffer_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
+  params.pass_lstm = LSTMBuilder(Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.HIDDEN_DIM, model);
+  params.action_lstm = LSTMBuilder(Opt.LAYERS, Opt.ACTION_DIM, Opt.HIDDEN_DIM, model);
+  params.p_w = model.add_lookup_parameters(System_size.VOCAB_SIZE, {Opt.INPUT_DIM});
+  params.p_a = model.add_lookup_parameters(System_size.ACTION_SIZE, {Opt.ACTION_DIM});
+  params.p_r = model.add_lookup_parameters(System_size.ACTION_SIZE, {Opt.REL_DIM});
+  params.p_pbias = model.add_parameters({Opt.HIDDEN_DIM});
+  params.p_A = model.add_parameters({Opt.HIDDEN_DIM, Opt.HIDDEN_DIM});
+  params.p_B = model.add_parameters({Opt.HIDDEN_DIM, Opt.HIDDEN_DIM});
+  params.p_P = model.add_parameters({Opt.HIDDEN_DIM, Opt.HIDDEN_DIM});
+  params.p_S = model.add_parameters({Opt.HIDDEN_DIM, Opt.HIDDEN_DIM});
+  params.p_H = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.LSTM_INPUT_DIM});
+  params.p_D = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.LSTM_INPUT_DIM});
+  params.p_R = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.REL_DIM});
+  params.p_w2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.INPUT_DIM});
+  params.p_ib = model.add_parameters({Opt.LSTM_INPUT_DIM});
+  params.p_cbias = model.add_parameters({Opt.LSTM_INPUT_DIM});
+  params.p_p2a = model.add_parameters({System_size.ACTION_SIZE, Opt.HIDDEN_DIM});
+  params.p_action_start = model.add_parameters({Opt.ACTION_DIM});
+  params.p_abias = model.add_parameters({System_size.ACTION_SIZE});
+  params.p_buffer_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
+  params.p_stack_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
+  params.p_pass_guard = model.add_parameters({Opt.LSTM_INPUT_DIM});
   if (Opt.USE_BILSTM) {
-    buffer_bilstm = BidirectionalLSTMLayer(model, Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.BILSTM_HIDDEN_DIM);
+    params.buffer_bilstm = BidirectionalLSTMLayer(model, Opt.LAYERS, Opt.LSTM_INPUT_DIM, Opt.BILSTM_HIDDEN_DIM);
     //p_fwB = model.add_parameters({Opt.HIDDEN_DIM, Opt.BILSTM_HIDDEN_DIM});
     //p_bwB = model.add_parameters({Opt.HIDDEN_DIM, Opt.BILSTM_HIDDEN_DIM});
-    p_biB = model.add_parameters({Opt.HIDDEN_DIM, 2 * Opt.BILSTM_HIDDEN_DIM});
+    params.p_biB = model.add_parameters({Opt.HIDDEN_DIM, 2 * Opt.BILSTM_HIDDEN_DIM});
     cerr << "Created Buffer BiLSTM" << endl;
   }
   if (Opt.USE_TREELSTM) {
-    tree_lstm = TheirTreeLSTMBuilder(1, Opt.LSTM_INPUT_DIM, Opt.LSTM_INPUT_DIM, model);
+    params.tree_lstm = TheirTreeLSTMBuilder(1, Opt.LSTM_INPUT_DIM, Opt.LSTM_INPUT_DIM, model);
     cerr << "Created TreeLSTM" << endl;
   }
   if (Opt.USE_POS) {
-    p_p = model.add_lookup_parameters(System_size.POS_SIZE, {Opt.POS_DIM});
-    p_p2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.POS_DIM});
+    params.p_p = model.add_lookup_parameters(System_size.POS_SIZE, {Opt.POS_DIM});
+    params.p_p2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.POS_DIM});
   }
   if (pretrained.size() > 0) {
     use_pretrained = true;
-    p_t = model.add_lookup_parameters(System_size.VOCAB_SIZE, {Opt.PRETRAINED_DIM});
+    params.p_t = model.add_lookup_parameters(System_size.VOCAB_SIZE, {Opt.PRETRAINED_DIM});
     for (auto it : pretrained)
-      p_t.initialize(it.first, it.second);
-    p_t2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.PRETRAINED_DIM});
+      params.p_t.initialize(it.first, it.second);
+    params.p_t2l = model.add_parameters({Opt.LSTM_INPUT_DIM, Opt.PRETRAINED_DIM});
   }else {
     use_pretrained = false;
     //p_t = nullptr;
     //p_t2l = nullptr;
   }
   if (Opt.USE_ATTENTION){
-    p_W_satb = model.add_parameters({1, Opt.HIDDEN_DIM + 2 * Opt.BILSTM_HIDDEN_DIM});
-    p_bias_satb = model.add_parameters({1});
+    params.p_W_satb = model.add_parameters({1, Opt.HIDDEN_DIM + 2 * Opt.BILSTM_HIDDEN_DIM});
+    params.p_bias_satb = model.add_parameters({1});
   }
   return true;
 }
@@ -582,61 +582,61 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     for (unsigned i = 0; i < sent.size(); ++i)
         cand.push_back(cv);
 
-    stack_lstm.new_graph(*hg);
-    stack_lstm.start_new_sequence();
+    params.stack_lstm.new_graph(*hg);
+    params.stack_lstm.start_new_sequence();
     if (transition_system == "list-graph" || transition_system == "list-tree"){
-      pass_lstm.new_graph(*hg);
-      pass_lstm.start_new_sequence();
+      params.pass_lstm.new_graph(*hg);
+      params.pass_lstm.start_new_sequence();
     }
-    action_lstm.new_graph(*hg);
-    action_lstm.start_new_sequence();
+    params.action_lstm.new_graph(*hg);
+    params.action_lstm.start_new_sequence();
 
     //Expression fwB;
     //Expression bwB;
     Expression biB;
     if (Opt.USE_BILSTM){
-      buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
-      biB = parameter(*hg, p_biB); // [bilstm]
+      params.buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
+      biB = parameter(*hg, params.p_biB); // [bilstm]
       //fwB = parameter(*hg, p_fwB); // [bilstm]
       //bwB = parameter(*hg, p_bwB); // [bilstm]
     }else{
-      buffer_lstm.new_graph(*hg);
-      buffer_lstm.start_new_sequence();
+      params.buffer_lstm.new_graph(*hg);
+      params.buffer_lstm.start_new_sequence();
     }
     if (Opt.USE_TREELSTM){
-      tree_lstm.new_graph(*hg); // [treelstm]
-      tree_lstm.start_new_sequence(); // [treelstm]
-      tree_lstm.initialize_structure(sent.size()); // [treelstm]
+      params.tree_lstm.new_graph(*hg); // [treelstm]
+      params.tree_lstm.start_new_sequence(); // [treelstm]
+      params.tree_lstm.initialize_structure(sent.size()); // [treelstm]
     }
     Expression W_satb; // [attention]
     Expression bias_satb;
     if (Opt.USE_ATTENTION){
-      W_satb = parameter(*hg, p_W_satb);
-      bias_satb = parameter(*hg, p_bias_satb);
+      W_satb = parameter(*hg, params.p_W_satb);
+      bias_satb = parameter(*hg, params.p_bias_satb);
     }
     // variables in the computation graph representing the parameters
-    Expression pbias = parameter(*hg, p_pbias);
-    Expression H = parameter(*hg, p_H);
-    Expression D = parameter(*hg, p_D);
-    Expression R = parameter(*hg, p_R);
-    Expression cbias = parameter(*hg, p_cbias);
-    Expression S = parameter(*hg, p_S);
-    Expression B = parameter(*hg, p_B);
-    Expression P = parameter(*hg, p_P);
-    Expression A = parameter(*hg, p_A);
-    Expression ib = parameter(*hg, p_ib);
-    Expression w2l = parameter(*hg, p_w2l);
+    Expression pbias = parameter(*hg, params.p_pbias);
+    Expression H = parameter(*hg, params.p_H);
+    Expression D = parameter(*hg, params.p_D);
+    Expression R = parameter(*hg, params.p_R);
+    Expression cbias = parameter(*hg, params.p_cbias);
+    Expression S = parameter(*hg, params.p_S);
+    Expression B = parameter(*hg, params.p_B);
+    Expression P = parameter(*hg, params.p_P);
+    Expression A = parameter(*hg, params.p_A);
+    Expression ib = parameter(*hg, params.p_ib);
+    Expression w2l = parameter(*hg, params.p_w2l);
     Expression p2l;
     if (Opt.USE_POS)
-      p2l = parameter(*hg, p_p2l);
+      p2l = parameter(*hg, params.p_p2l);
     Expression t2l;
     if (use_pretrained)
-      t2l = parameter(*hg, p_t2l);
-    Expression p2a = parameter(*hg, p_p2a);
-    Expression abias = parameter(*hg, p_abias);
-    Expression action_start = parameter(*hg, p_action_start);
+      t2l = parameter(*hg, params.p_t2l);
+    Expression p2a = parameter(*hg, params.p_p2a);
+    Expression abias = parameter(*hg, params.p_abias);
+    Expression action_start = parameter(*hg, params.p_action_start);
 
-    action_lstm.add_input(action_start);
+    params.action_lstm.add_input(action_start);
     vector<Expression> buffer(sent.size() + 1);  // variables representing word embeddings (possibly including POS info)
     vector<int> bufferi(sent.size() + 1);  // position of the words in the sentence
     // precompute buffer representation from left to right
@@ -644,17 +644,17 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
     for (unsigned i = 0; i < sent.size(); ++i) {
       assert(sent[i] < System_size.VOCAB_SIZE);
-      Expression w =lookup(*hg, p_w, sent[i]);
+      Expression w =lookup(*hg, params.p_w, sent[i]);
 
       vector<Expression> args = {ib, w2l, w}; // learn embeddings
       if (Opt.USE_POS) { // learn POS tag?
-        Expression p = lookup(*hg, p_p, sentPos[i]);
+        Expression p = lookup(*hg, params.p_p, sentPos[i]);
         args.push_back(p2l);
         args.push_back(p);
       }
       if (use_pretrained) {  // include fixed pretrained vectors?
         if (pretrained.count(raw_sent[i])){
-          Expression t = const_lookup(*hg, p_t, raw_sent[i]);
+          Expression t = const_lookup(*hg, params.p_t, raw_sent[i]);
           args.push_back(t2l);
           args.push_back(t);
           //cerr << "has embedding: " << corpus.intToWords[raw_sent[i]] << endl;
@@ -662,7 +662,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         else{
           unsigned lower_id = corpus.wordsToInt[cpyp::StrToLower(corpus.intToWords[raw_sent[i]])];
           if (pretrained.count(lower_id)){
-            Expression t = const_lookup(*hg, p_t, lower_id);
+            Expression t = const_lookup(*hg, params.p_t, lower_id);
             args.push_back(t2l);
             args.push_back(t);
             //cerr << "lower has embedding: " << corpus.intToWords[lower_id] << endl;
@@ -681,35 +681,35 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     if (Opt.USE_TREELSTM){
       vector<unsigned> h;
       for (int i = 0; i < sent.size(); i++)
-        tree_lstm.add_input(i, h, word_emb[i]);
+        params.tree_lstm.add_input(i, h, word_emb[i]);
     }
 
     // dummy symbol to represent the empty buffer
-    buffer[0] = parameter(*hg, p_buffer_guard);
+    buffer[0] = parameter(*hg, params.p_buffer_guard);
     bufferi[0] = -999;
     std::vector<BidirectionalLSTMLayer::Output> bilstm_outputs;
     if (Opt.USE_BILSTM){
-      buffer_bilstm.add_inputs(hg, buffer); 
-      buffer_bilstm.get_outputs(hg, bilstm_outputs); // [bilstm] output of bilstm for buffer, first is fw, second is bw
+      params.buffer_bilstm.add_inputs(hg, buffer); 
+      params.buffer_bilstm.get_outputs(hg, bilstm_outputs); // [bilstm] output of bilstm for buffer, first is fw, second is bw
     }else{
       for (auto& b : buffer)
-        buffer_lstm.add_input(b);
+        params.buffer_lstm.add_input(b);
     }
 
     vector<Expression> pass; //variables reperesenting embedding in pass buffer
     vector<int> passi; //position of words in pass buffer
     if (Opt.transition_system == "list-graph" || Opt.transition_system == "list-tree"){   
-      pass.push_back(parameter(*hg, p_pass_guard));
+      pass.push_back(parameter(*hg, params.p_pass_guard));
       passi.push_back(-999); // not used for anything
-      pass_lstm.add_input(pass.back());
+      params.pass_lstm.add_input(pass.back());
     }
 
     vector<Expression> stack;  // variables representing subtree embeddings
     vector<int> stacki; // position of words in the sentence of head of subtree
-    stack.push_back(parameter(*hg, p_stack_guard));
+    stack.push_back(parameter(*hg, params.p_stack_guard));
     stacki.push_back(-999); // not used for anything
     // drive dummy symbol on stack through LSTM
-    stack_lstm.add_input(stack.back());
+    params.stack_lstm.add_input(stack.back());
     vector<Expression> log_probs;
     string rootword;
     unsigned action_count = 0;  // incremented at each prediction
@@ -769,7 +769,7 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
           Expression b_fwh = bilstm_outputs[i].first;
           Expression b_bwh = bilstm_outputs[i].second;
           buf_mat[i - 1] = concatenate({b_fwh, b_bwh});
-          Expression s_b = concatenate({stack_lstm.back(), b_fwh, b_bwh});
+          Expression s_b = concatenate({params.stack_lstm.back(), b_fwh, b_bwh});
           alpha[i - 1] = rectify(affine_transform({bias_satb, W_satb, s_b}));
         }
         Expression a = concatenate(alpha);
@@ -778,9 +778,11 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         Expression buf_rep = buffer_mat * ae; // (2 * bilstm_hidden_dim , 1)
         if (transition_system == "list-graph" || transition_system == "list-tree")
           // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
-          p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), biB, buf_rep, A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), P, params.pass_lstm.back(), 
+          												biB, buf_rep, A, params.action_lstm.back()});
         else if (transition_system == "swap")
-          p_t = affine_transform({pbias, S, stack_lstm.back(), biB, buf_rep, A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), biB, buf_rep, A, 
+          												params.action_lstm.back()});
       }
       else if (Opt.USE_BILSTM){
         //cerr << "bilstm: " << bilstm_outputs.size() << " id: " 
@@ -799,22 +801,24 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         if (transition_system == "list-graph" || transition_system == "list-tree"){
           //p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
                                 //fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
-          p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
-                                biB, bibuf, A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), P, params.pass_lstm.back(), 
+                                biB, bibuf, A, params.action_lstm.back()});
         }
         else if (transition_system == "swap"){
           //p_t = affine_transform({pbias, S, stack_lstm.back(), fwB, fwbuf, bwB, bwbuf, 
                                 //A, action_lstm.back()});
-          p_t = affine_transform({pbias, S, stack_lstm.back(), biB, bibuf, 
-                                A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), biB, bibuf, 
+                                A, params.action_lstm.back()});
         }
         //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
       }else{
         if (transition_system == "list-graph" || transition_system == "list-tree")
           // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
-          p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), P, params.pass_lstm.back(), 
+          											B, params.buffer_lstm.back(), A, params.action_lstm.back()});
         else if (transition_system == "swap")
-          p_t = affine_transform({pbias, S, stack_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), B, params.buffer_lstm.back(), 
+          											A, params.action_lstm.back()});
       }
       Expression nlp_t = rectify(p_t);
       // r_t = abias + p2a * nlp
@@ -863,16 +867,16 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
       log_probs.push_back(pick(adiste, action));
       if (transition_system == "swap")
         apply_action(hg,
-                   stack_lstm, buffer_lstm, action_lstm, tree_lstm,
+                   params.stack_lstm, params.buffer_lstm, params.action_lstm, params.tree_lstm,
                    buffer, bufferi, stack, stacki, results,
                    action, setOfActions, sent, intToWords,
                    cbias, H, D, R, &rootword, dir_graph, word_emb);
       else if (transition_system == "list-graph" || transition_system == "list-tree") {
         apply_action(hg,
-                   stack_lstm, buffer_lstm, action_lstm, tree_lstm,
+                   params.stack_lstm, params.buffer_lstm, params.action_lstm, params.tree_lstm,
                    buffer, bufferi, stack, stacki, results,
                    action, setOfActions, sent, intToWords, cbias, H, D, R,
-                   &rootword, dir_graph, word_emb, pass_lstm,
+                   &rootword, dir_graph, word_emb, params.pass_lstm,
                    pass, passi); 
       }
     }
@@ -917,12 +921,12 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
 
     // add current action to action LSTM
     //cerr << "add current action to action LSTM\n";
-    Expression actione = lookup(*hg, p_a, action);
+    Expression actione = lookup(*hg, params.p_a, action);
     action_lstm.add_input(actione);
 
     // get relation embedding from action (TODO: convert to relation from action?)
     //cerr << "get relation embedding from action\n";
-    Expression relation = lookup(*hg, p_r, action);
+    Expression relation = lookup(*hg, params.p_r, action);
 
     const string &actionString = setOfActions[action];
 
@@ -1034,11 +1038,11 @@ void LSTMParser::apply_action( ComputationGraph* hg,
 			results.push_back(action);
 
       // add current action to action LSTM
-      Expression actione = lookup(*hg, p_a, action);
+      Expression actione = lookup(*hg, params.p_a, action);
       action_lstm.add_input(actione);
 
       // get relation embedding from action (TODO: convert to relation from action?)
-      Expression relation = lookup(*hg, p_r, action);
+      Expression relation = lookup(*hg, params.p_r, action);
 
       // do action
       const string& actionString=setOfActions[action];
@@ -1211,72 +1215,73 @@ void LSTMParser::get_best_label(const vector<unsigned>& sent, const vector<unsig
     for (int i = 0; i < sent_size; i++){
         dir_graph.push_back(v);
     }
-    stack_lstm.new_graph(*hg);
-    buffer_lstm.new_graph(*hg);
-    pass_lstm.new_graph(*hg);
-    action_lstm.new_graph(*hg);
-    stack_lstm.start_new_sequence();
-    buffer_lstm.start_new_sequence();
-    pass_lstm.start_new_sequence();
-    action_lstm.start_new_sequence();
+    params.stack_lstm.new_graph(*hg);
+    params.buffer_lstm.new_graph(*hg);
+    params.pass_lstm.new_graph(*hg);
+    params.action_lstm.new_graph(*hg);
+    params.stack_lstm.start_new_sequence();
+    params.buffer_lstm.start_new_sequence();
+    params.pass_lstm.start_new_sequence();
+    params.action_lstm.start_new_sequence();
     // variables in the computation graph representing the parameters
-    Expression pbias = parameter(*hg, p_pbias);
-    Expression S = parameter(*hg, p_S);
-    Expression B = parameter(*hg, p_B);
-    Expression P = parameter(*hg, p_P);
-    Expression A = parameter(*hg, p_A);
-    Expression ib = parameter(*hg, p_ib);
-    Expression w2l = parameter(*hg, p_w2l);
+    Expression pbias = parameter(*hg, params.p_pbias);
+    Expression S = parameter(*hg, params.p_S);
+    Expression B = parameter(*hg, params.p_B);
+    Expression P = parameter(*hg, params.p_P);
+    Expression A = parameter(*hg, params.p_A);
+    Expression ib = parameter(*hg, params.p_ib);
+    Expression w2l = parameter(*hg, params.p_w2l);
     Expression p2l;
     if (Opt.USE_POS)
-      p2l = parameter(*hg, p_p2l);
+      p2l = parameter(*hg, params.p_p2l);
     Expression t2l;
     if (use_pretrained)
-      t2l = parameter(*hg, p_t2l);
-    Expression p2a = parameter(*hg, p_p2a);
-    Expression abias = parameter(*hg, p_abias);
-    Expression action_start = parameter(*hg, p_action_start);
+      t2l = parameter(*hg, params.p_t2l);
+    Expression p2a = parameter(*hg, params.p_p2a);
+    Expression abias = parameter(*hg, params.p_abias);
+    Expression action_start = parameter(*hg, params.p_action_start);
 
-    action_lstm.add_input(action_start);
+    params.action_lstm.add_input(action_start);
 
     //action_lstm.add_input(act_rep);
     vector<Expression> buffer;  // variables representing word embeddings (possibly including POS info)
     vector<int> bufferi;
-    Expression w =lookup(*hg, p_w, sent[b0]);
+    Expression w =lookup(*hg, params.p_w, sent[b0]);
 
     vector<Expression> args = {ib, w2l, w}; // learn embeddings
     if (Opt.USE_POS) { // learn POS tag?
-        Expression p = lookup(*hg, p_p, sentPos[b0]);
+        Expression p = lookup(*hg, params.p_p, sentPos[b0]);
         args.push_back(p2l);
         args.push_back(p);
     }
     if (use_pretrained && pretrained.count(sent[b0])) {  // include fixed pretrained vectors?
-        Expression t = const_lookup(*hg, p_t, sent[b0]);
+        Expression t = const_lookup(*hg, params.p_t, sent[b0]);
         args.push_back(t2l);
         args.push_back(t);
     }
     //buffer[] = ib + w2l * w + p2l * p + t2l * t
 
-    buffer.push_back(parameter(*hg, p_buffer_guard));
+    buffer.push_back(parameter(*hg, params.p_buffer_guard));
     buffer.push_back(rectify(affine_transform(args)));
     bufferi.push_back(-999);
     bufferi.push_back(b0);
     for (auto& b : buffer)
-        buffer_lstm.add_input(b);
+        params.buffer_lstm.add_input(b);
 
     
     vector<Expression> pass; //variables reperesenting embedding in pass buffer
-    pass.push_back(parameter(*hg, p_pass_guard));
-    pass_lstm.add_input(pass.back());
+    pass.push_back(parameter(*hg, params.p_pass_guard));
+    params.pass_lstm.add_input(pass.back());
 
+    w = lookup(*hg, params.p_w, sent[s0]);
     args = {ib, w2l, w}; // learn embeddings
     if (Opt.USE_POS) { // learn POS tag?
-        Expression p = lookup(*hg, p_p, sentPos[s0]);
+        Expression p = lookup(*hg, params.p_p, sentPos[s0]);
         args.push_back(p2l);
         args.push_back(p);
     }
     if (use_pretrained && pretrained.count(sent[s0])) {  // include fixed pretrained vectors?
-        Expression t = const_lookup(*hg, p_t, sent[s0]);
+        Expression t = const_lookup(*hg, params.p_t, sent[s0]);
         args.push_back(t2l);
         args.push_back(t);
     }
@@ -1285,10 +1290,10 @@ void LSTMParser::get_best_label(const vector<unsigned>& sent, const vector<unsig
     vector<int> stacki;
     stacki.push_back(-999);
     stacki.push_back(s0);
-    stack.push_back(parameter(*hg, p_stack_guard));
-    stack_lstm.add_input(stack.back());
+    stack.push_back(parameter(*hg, params.p_stack_guard));
+    params.stack_lstm.add_input(stack.back());
     stack.push_back(rectify(affine_transform(args)));
-    stack_lstm.add_input(stack.back());
+    params.stack_lstm.add_input(stack.back());
 
     // get list of possible actions for the current parser state
     vector<unsigned> current_valid_actions;
@@ -1302,7 +1307,8 @@ void LSTMParser::get_best_label(const vector<unsigned>& sent, const vector<unsig
         current_valid_actions.push_back(a);
     }
     // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
-    Expression p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), B, buffer_lstm.back(), A, action_lstm.back()});
+    Expression p_t = affine_transform({pbias, S, params.stack_lstm.back(), P, params.pass_lstm.back(), 
+    																	B, params.buffer_lstm.back(), A, params.action_lstm.back()});
     Expression nlp_t = rectify(p_t);
     // r_t = abias + p2a * nlp
     Expression r_t = affine_transform({abias, p2a, nlp_t});
