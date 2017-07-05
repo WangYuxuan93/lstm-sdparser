@@ -65,6 +65,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
 }
 
 int main(int argc, char** argv) {
+  bool DEBUG = true;
   cerr << "COMMAND:"; 
   for (unsigned i = 0; i < static_cast<unsigned>(argc); ++i) cerr << ' ' << argv[i];
   cerr << endl;
@@ -77,24 +78,13 @@ int main(int argc, char** argv) {
   Opt.USE_BILSTM = conf.count("use_bilstm");
   Opt.USE_TREELSTM = conf.count("use_treelstm");
   Opt.USE_ATTENTION = conf.count("use_attention");
+  Opt.USE_2MODEL = conf.count("model2");
   Opt.POST_PROCESS = conf.count("post");
   Opt.SDP_OUTPUT = conf.count("sdp_output");
   Opt.HAS_HEAD = conf.count("has_head");
   Opt.max_itr = conf["max_itr"].as<unsigned>();
-  cerr << "Max training iteration: " << Opt.max_itr << endl;
-  cerr << "Using " << Opt.optimizer << " as optimizer." << endl;
-  if (Opt.USE_BILSTM)
-    cerr << "Using bilstm for buffer." << endl;
-  if (Opt.USE_TREELSTM)
-    cerr << "Using treelstm for subtree in stack." << endl;
-   if (Opt.USE_ATTENTION)
-    cerr << "Using attention." << endl;
-  if (Opt.POST_PROCESS)
-    cerr << "Using post processing." << endl;
-  if (Opt.HAS_HEAD)
-    cerr << "Every word should have at least one head." << endl;
+
   Opt.transition_system = conf["transition_system"].as<string>();
-  cerr << "Transition System: " << Opt.transition_system << endl;
   Opt.LAYERS = conf["layers"].as<unsigned>();
   Opt.INPUT_DIM = conf["input_dim"].as<unsigned>();
   Opt.PRETRAINED_DIM = conf["pretrained_dim"].as<unsigned>();
@@ -104,6 +94,25 @@ int main(int argc, char** argv) {
   Opt.POS_DIM = conf["pos_dim"].as<unsigned>();
   Opt.REL_DIM = conf["rel_dim"].as<unsigned>();
   Opt.BILSTM_HIDDEN_DIM = conf["bilstm_hidden_dim"].as<unsigned>(); // [bilstm]
+
+  if (DEBUG){
+    cerr << "Transition System: " << Opt.transition_system << endl;
+    cerr << "Max training iteration: " << Opt.max_itr << endl;
+    cerr << "Using " << Opt.optimizer << " as optimizer." << endl;
+    if (Opt.USE_BILSTM)
+      cerr << "Using bilstm for buffer." << endl;
+    if (Opt.USE_TREELSTM)
+      cerr << "Using treelstm for subtree in stack." << endl;
+    if (Opt.USE_ATTENTION)
+      cerr << "Using attention." << endl;
+    if (Opt.POST_PROCESS)
+      cerr << "Using post processing." << endl;
+    if (Opt.HAS_HEAD)
+      cerr << "Every word should have at least one head." << endl;
+    if (Opt.USE_2MODEL)
+      cerr << "Using 2 model for predicting." << endl;
+  }
+  
   if (conf.count("dynet_seed")){
     Opt.dynet_seed = conf["dynet_seed"].as<string>();
   }
@@ -111,11 +120,14 @@ int main(int argc, char** argv) {
     Opt.dynet_mem = conf["dynet_mem"].as<string>();
   }
   const unsigned unk_strategy = conf["unk_strategy"].as<unsigned>();
-  cerr << "Unknown word strategy: ";
-  if (unk_strategy == 1) {
-    cerr << "STOCHASTIC REPLACEMENT\n";
-  } else {
-    abort();
+
+  if (DEBUG){
+    cerr << "Unknown word strategy: ";
+    if (unk_strategy == 1) {
+      cerr << "STOCHASTIC REPLACEMENT\n";
+    } else {
+      abort();
+    }
   }
   const double unk_prob = conf["unk_prob"].as<double>();
   assert(unk_prob >= 0.); assert(unk_prob <= 1.);
@@ -157,6 +169,8 @@ int main(int argc, char** argv) {
   }
   else if (conf.count("test_data")){
     parser -> load_model(conf["model"].as<string>());
+    if (conf.count("model2")) 
+      parser -> load_2nd_model(conf["model2"].as<string>());
     parser -> test(conf["test_data"].as<string>());
   }
 

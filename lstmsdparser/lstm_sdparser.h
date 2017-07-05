@@ -81,6 +81,7 @@ typedef struct Options {
   bool POST_PROCESS; // true
   bool SDP_OUTPUT; // false
   bool HAS_HEAD; // false
+  bool USE_2MODEL; // false
 }Options;
 
 typedef struct Parameters {
@@ -132,7 +133,7 @@ public:
 	Options Opt;
 	Sizes System_size;
 	std::string transition_system;
-  Model model;
+  Model model, model_2nd;
 
   bool use_pretrained; // True if use pretraiend word embedding
   
@@ -140,7 +141,7 @@ public:
   set<unsigned> training_vocab; // words available in the training corpus
   set<unsigned> singletons;
 
-  Parameters params;
+  Parameters params, params_2nd;
 
   explicit LSTMParser();
   ~LSTMParser();
@@ -151,6 +152,7 @@ public:
   void set_options(Options opts);
   bool load(string model_file, string training_data_file, string word_embedding_file,
                         string dev_data_file = "");
+  bool load_2nd_model(string model_file);
 
   void get_dynamic_infos();
   bool init_dynet();
@@ -191,6 +193,28 @@ public:
                    vector<vector<bool>>& graph,
                    const vector<Expression>& word_emb);
 
+  void apply_action_2nd( ComputationGraph* hg,
+                   LSTMBuilder& stack_lstm,
+                   LSTMBuilder& buffer_lstm,
+                   LSTMBuilder& action_lstm,
+                   TheirTreeLSTMBuilder& tree_lstm,
+                   vector<Expression>& buffer,
+                   const vector<int>& bufferi,
+                   vector<Expression>& stack,
+                   const vector<int>& stacki,
+                   //vector<unsigned>& results,
+                   unsigned action,
+                   const vector<string>& setOfActions,
+                   const vector<unsigned>& sent,  // sent with oovs replaced
+                   const map<unsigned, std::string>& intToWords,
+                   const Expression& cbias,
+                   const Expression& H,
+                   const Expression& D,
+                   const Expression& R,
+                   string* rootword,
+                   const vector<vector<bool>>& graph,
+                   const vector<Expression>& word_emb);
+
   // for list-based algorithms
   void apply_action( ComputationGraph* hg,
                    LSTMBuilder& stack_lstm,
@@ -217,7 +241,42 @@ public:
                    vector<Expression>& pass,
                    vector<int>& passi);
 
+  void apply_action_2nd( ComputationGraph* hg,
+                   LSTMBuilder& stack_lstm,
+                   LSTMBuilder& buffer_lstm,
+                   LSTMBuilder& action_lstm,
+                   TheirTreeLSTMBuilder& tree_lstm,
+                   vector<Expression>& buffer,
+                   const vector<int>& bufferi,
+                   vector<Expression>& stack,
+                   const vector<int>& stacki,
+                   //vector<unsigned>& results,
+                   unsigned action,
+                   const vector<string>& setOfActions,
+                   const vector<unsigned>& sent,  // sent with oovs replaced
+                   const map<unsigned, std::string>& intToWords,
+                   const Expression& cbias,
+                   const Expression& H,
+                   const Expression& D,
+                   const Expression& R,
+                   string* rootword,
+                   const vector<vector<bool>>& graph,
+                   const vector<Expression>& word_emb,
+                   LSTMBuilder& pass_lstm,
+                   vector<Expression>& pass,
+                   const vector<int>& passi);
+
   std::vector<unsigned> log_prob_parser(ComputationGraph* hg,
+                     const std::vector<unsigned>& raw_sent,  // raw sentence
+                     const std::vector<unsigned>& sent,  // sent with oovs replaced
+                     const std::vector<unsigned>& sentPos,
+                     const std::vector<unsigned>& correct_actions,
+                     const std::vector<string>& setOfActions,
+                     const map<unsigned, std::string>& intToWords,
+                     double *right, 
+                     std::vector<std::vector<string>>& cand);
+
+  std::vector<unsigned> log_prob_parser_ensemble(ComputationGraph* hg,
                      const std::vector<unsigned>& raw_sent,  // raw sentence
                      const std::vector<unsigned>& sent,  // sent with oovs replaced
                      const std::vector<unsigned>& sentPos,

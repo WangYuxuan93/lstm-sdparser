@@ -11,7 +11,7 @@ namespace po = boost::program_options;
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
                               "sgd", "list-tree", "", "4000", true, false, false, false,
-                              true, false, false}) {}
+                              true, false, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -171,6 +171,46 @@ bool LSTMParser::load_model(string model_file, string dev_data_file){
     corpus.load_conll_fileDev(dev_data_file);
     if (DEBUG)
       cerr << "finish loading dev data" << endl;
+  }
+  return true;
+}
+
+bool LSTMParser::load_2nd_model(string model_file) {
+
+  if (model_file.length() > 0) {
+    time_t time_now = time(NULL);
+    std::string t_n(asctime(localtime(&time_now))); 
+    cerr << "[" << t_n.substr(0, t_n.size() - 1) << "] "
+        << "loading 2nd model from " << model_file << endl;
+    ifstream in(model_file.c_str());
+    //boost::archive::text_iarchive ia(in);
+    boost::archive::binary_iarchive ia(in);
+
+    ia >> corpus.nwords;
+    ia >> corpus.nactions;
+    ia >> corpus.npos;
+
+    ia >> corpus.max;
+    ia >> corpus.maxPos;
+
+    ia >> corpus.wordsToInt;
+    ia >> corpus.intToWords;
+    ia >> corpus.actions;
+
+    ia >> corpus.posToInt;
+    ia >> corpus.intToPos;
+
+    ia >> pretrained;
+    ia >> training_vocab;
+
+    if (!setup_dynet(this -> model_2nd, this -> params_2nd)) cerr << "### fail in setting up dynet! ###" << endl;
+
+    ia >> this -> model_2nd;
+    if (DEBUG)
+      cerr << "finish loading 2nd model" << endl;
+  }
+  else {
+    cerr << "### No model file! ###" << endl;
   }
   return true;
 }
@@ -891,6 +931,555 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
     return results;
   }
 
+  // ensemble parser of 2 models
+vector<unsigned> LSTMParser::log_prob_parser_ensemble(ComputationGraph* hg,
+                     const vector<unsigned>& raw_sent,  // raw sentence
+                     const vector<unsigned>& sent,  // sent with oovs replaced
+                     const vector<unsigned>& sentPos,
+                     const vector<unsigned>& correct_actions,
+                     const vector<string>& setOfActions,
+                     const map<unsigned, std::string>& intToWords,
+                     double *right, 
+                     vector<vector<string>>& cand) {
+    //const vector<string> setOfActions = corpus.actions;
+    //const map<unsigned, std::string> intToWords = corpus.intToWords;
+
+    vector<unsigned> results;
+    const bool build_training_graph = correct_actions.size() > 0;
+    //init candidate
+    vector<string> cv;
+    for (unsigned i = 0; i < sent.size(); ++i)
+        cv.push_back(REL_NULL);
+    for (unsigned i = 0; i < sent.size(); ++i)
+        cand.push_back(cv);
+
+    params.stack_lstm.new_graph(*hg);
+    params.stack_lstm.start_new_sequence();
+    if (transition_system == "list-graph" || transition_system == "list-tree"){
+      params.pass_lstm.new_graph(*hg);
+      params.pass_lstm.start_new_sequence();
+    }
+    params.action_lstm.new_graph(*hg);
+    params.action_lstm.start_new_sequence();
+
+    //Expression fwB,bwB;
+    Expression biB;
+    if (Opt.USE_BILSTM){
+      params.buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
+      //fwB = parameter(*hg, params.p_fwB); // [bilstm]
+      //bwB = parameter(*hg, params.p_bwB); // [bilstm]
+      biB = parameter(*hg, params.p_biB); // [bilstm]
+    }else{
+      params.buffer_lstm.new_graph(*hg);
+      params.buffer_lstm.start_new_sequence();
+    }
+    if (Opt.USE_TREELSTM){
+      params.tree_lstm.new_graph(*hg); // [treelstm]
+      params.tree_lstm.start_new_sequence(); // [treelstm]
+      params.tree_lstm.initialize_structure(sent.size()); // [treelstm]
+    }
+    Expression W_satb;
+    Expression bias_satb;
+    if (Opt.USE_ATTENTION){
+      W_satb = parameter(*hg, params.p_W_satb);
+      bias_satb = parameter(*hg, params.p_bias_satb);
+    }
+
+    // variables in the computation graph representing the parameters
+    Expression pbias = parameter(*hg, params.p_pbias);
+    Expression H = parameter(*hg, params.p_H);
+    Expression D = parameter(*hg, params.p_D);
+    Expression R = parameter(*hg, params.p_R);
+    Expression cbias = parameter(*hg, params.p_cbias);
+    Expression S = parameter(*hg, params.p_S);
+    Expression B = parameter(*hg, params.p_B);
+    Expression P = parameter(*hg, params.p_P);
+    Expression A = parameter(*hg, params.p_A);
+    Expression ib = parameter(*hg, params.p_ib);
+    Expression w2l = parameter(*hg, params.p_w2l);
+    Expression p2l;
+    if (Opt.USE_POS)
+      p2l = parameter(*hg, params.p_p2l);
+    Expression t2l;
+    if (use_pretrained)
+      t2l = parameter(*hg, params.p_t2l);
+    Expression p2a = parameter(*hg, params.p_p2a);
+    Expression abias = parameter(*hg, params.p_abias);
+    Expression action_start = parameter(*hg, params.p_action_start);
+
+    params.action_lstm.add_input(action_start);
+    vector<Expression> buffer(sent.size() + 1);  // variables representing word embeddings (possibly including POS info)
+    vector<int> bufferi(sent.size() + 1);  // position of the words in the sentence
+    // precompute buffer representation from left to right
+    vector<Expression> word_emb(sent.size()); // [treelstm] store original word representation emb[i] for sent[i]
+
+    for (unsigned i = 0; i < sent.size(); ++i) {
+      assert(sent[i] < System_size.VOCAB_SIZE);
+      Expression w = lookup(*hg, params.p_w, sent[i]);
+      vector<Expression> args = {ib, w2l, w}; // learn embeddings
+      if (Opt.USE_POS) { // learn POS tag?
+        Expression p = lookup(*hg, params.p_p, sentPos[i]);
+        args.push_back(p2l);
+        args.push_back(p);
+        //cerr << "has embedding: " << corpus.intToWords[raw_sent[i]] << endl;
+      }
+      if (use_pretrained) {  // include fixed pretrained vectors?
+        if (pretrained.count(raw_sent[i])){
+          Expression t = const_lookup(*hg, params.p_t, raw_sent[i]);
+          args.push_back(t2l);
+          args.push_back(t);
+        }
+        else{
+          unsigned lower_id = corpus.wordsToInt[cpyp::StrToLower(corpus.intToWords[raw_sent[i]])];
+          if (pretrained.count(lower_id)){
+            Expression t = const_lookup(*hg, params.p_t, lower_id);
+            args.push_back(t2l);
+            args.push_back(t);
+            //cerr << "lower has embedding: " << corpus.intToWords[lower_id] << endl;
+          }
+          //else cerr << "no embedding: " << corpus.intToWords[raw_sent[i]] << endl;
+        }
+      }
+      //buffer[] = ib + w2l * w + p2l * p + t2l * t
+      buffer[sent.size() - i] = rectify(affine_transform(args));
+      bufferi[sent.size() - i] = i;
+      if (Opt.USE_TREELSTM){
+        word_emb[i] = buffer[sent.size() - i];
+      }
+    }
+    if (Opt.USE_TREELSTM){
+      vector<unsigned> h;
+      for (int i = 0; i < sent.size(); i++)
+        params.tree_lstm.add_input(i, h, word_emb[i]);
+    }
+
+    // dummy symbol to represent the empty buffer
+    buffer[0] = parameter(*hg, params.p_buffer_guard);
+    bufferi[0] = -999;
+    std::vector<BidirectionalLSTMLayer::Output> bilstm_outputs;
+    if (Opt.USE_BILSTM){
+      params.buffer_bilstm.add_inputs(hg, buffer); 
+      params.buffer_bilstm.get_outputs(hg, bilstm_outputs); // [bilstm] output of bilstm for buffer, first is fw, second is bw
+    }else{
+      for (auto& b : buffer)
+        params.buffer_lstm.add_input(b);
+    }
+
+    vector<Expression> pass; //variables reperesenting embedding in pass buffer
+    vector<int> passi; //position of words in pass buffer
+    if (Opt.transition_system == "list-graph" || Opt.transition_system == "list-tree"){   
+      pass.push_back(parameter(*hg, params.p_pass_guard));
+      passi.push_back(-999); // not used for anything
+      params.pass_lstm.add_input(pass.back());
+    }
+
+    vector<Expression> stack;  // variables representing subtree embeddings
+    vector<int> stacki; // position of words in the sentence of head of subtree
+    stack.push_back(parameter(*hg, params.p_stack_guard));
+    stacki.push_back(-999); // not used for anything
+    // drive dummy symbol on stack through LSTM
+    params.stack_lstm.add_input(stack.back());
+
+    //----------for the 2nd model------------
+    params_2nd.stack_lstm.new_graph(*hg);
+    params_2nd.stack_lstm.start_new_sequence();
+    if (transition_system == "list-graph" || transition_system == "list-tree"){
+      params_2nd.pass_lstm.new_graph(*hg);
+      params_2nd.pass_lstm.start_new_sequence();
+    }
+    params_2nd.action_lstm.new_graph(*hg);
+    params_2nd.action_lstm.start_new_sequence();
+
+    //Expression fwB,bwB;
+    Expression biB_2nd;
+    if (Opt.USE_BILSTM){
+      params_2nd.buffer_bilstm.new_graph(hg); // [bilstm] start_new_sequence is implemented in add_input
+      //fwB = parameter(*hg, params_2nd.p_fwB); // [bilstm]
+      //bwB = parameter(*hg, params_2nd.p_bwB); // [bilstm]
+      biB_2nd = parameter(*hg, params_2nd.p_biB); // [bilstm]
+    }else{
+      params_2nd.buffer_lstm.new_graph(*hg);
+      params_2nd.buffer_lstm.start_new_sequence();
+    }
+    if (Opt.USE_TREELSTM){
+      params_2nd.tree_lstm.new_graph(*hg); // [treelstm]
+      params_2nd.tree_lstm.start_new_sequence(); // [treelstm]
+      params_2nd.tree_lstm.initialize_structure(sent.size()); // [treelstm]
+    }
+    Expression W_satb_2nd;
+    Expression bias_satb_2nd;
+    if (Opt.USE_ATTENTION){
+      W_satb_2nd = parameter(*hg, params_2nd.p_W_satb);
+      bias_satb_2nd = parameter(*hg, params_2nd.p_bias_satb);
+    }
+
+    // variables in the computation graph representing the parameters
+    Expression pbias_2nd = parameter(*hg, params_2nd.p_pbias);
+    Expression H_2nd = parameter(*hg, params_2nd.p_H);
+    Expression D_2nd = parameter(*hg, params_2nd.p_D);
+    Expression R_2nd = parameter(*hg, params_2nd.p_R);
+    Expression cbias_2nd = parameter(*hg, params_2nd.p_cbias);
+    Expression S_2nd = parameter(*hg, params_2nd.p_S);
+    Expression B_2nd = parameter(*hg, params_2nd.p_B);
+    Expression P_2nd = parameter(*hg, params_2nd.p_P);
+    Expression A_2nd = parameter(*hg, params_2nd.p_A);
+    Expression ib_2nd = parameter(*hg, params_2nd.p_ib);
+    Expression w2l_2nd = parameter(*hg, params_2nd.p_w2l);
+    Expression p2l_2nd;
+    if (Opt.USE_POS)
+      p2l_2nd = parameter(*hg, params_2nd.p_p2l);
+    Expression t2l_2nd;
+    if (use_pretrained)
+      t2l_2nd = parameter(*hg, params_2nd.p_t2l);
+    Expression p2a_2nd = parameter(*hg, params_2nd.p_p2a);
+    Expression abias_2nd = parameter(*hg, params_2nd.p_abias);
+    Expression action_start_2nd = parameter(*hg, params_2nd.p_action_start);
+
+    params_2nd.action_lstm.add_input(action_start_2nd);
+    vector<Expression> buffer_2nd(sent.size() + 1);  // variables representing word embeddings (possibly including POS info)
+    //vector<int> bufferi(sent.size() + 1);  // position of the words in the sentence
+    // precompute buffer representation from left to right
+    vector<Expression> word_emb_2nd(sent.size()); // [treelstm] store original word representation emb[i] for sent[i]
+
+    for (unsigned i = 0; i < sent.size(); ++i) {
+      assert(sent[i] < System_size.VOCAB_SIZE);
+      Expression w = lookup(*hg, params_2nd.p_w, sent[i]);
+      vector<Expression> args = {ib_2nd, w2l_2nd, w}; // learn embeddings
+
+      if (Opt.USE_POS) { // learn POS tag?
+        Expression p = lookup(*hg, params_2nd.p_p, sentPos[i]);
+        args.push_back(p2l_2nd);
+        args.push_back(p);
+        //cerr << "has embedding: " << corpus.intToWords[raw_sent[i]] << endl;
+      }
+      if (use_pretrained) {  // include fixed pretrained vectors?
+        if (pretrained.count(raw_sent[i])){
+          Expression t = const_lookup(*hg, params_2nd.p_t, raw_sent[i]);
+          args.push_back(t2l_2nd);
+          args.push_back(t);
+        }
+        else{
+          unsigned lower_id = corpus.wordsToInt[cpyp::StrToLower(corpus.intToWords[raw_sent[i]])];
+          if (pretrained.count(lower_id)){
+            Expression t = const_lookup(*hg, params_2nd.p_t, lower_id);
+            args.push_back(t2l_2nd);
+            args.push_back(t);
+            //cerr << "lower has embedding: " << corpus.intToWords[lower_id] << endl;
+          }
+          //else cerr << "no embedding: " << corpus.intToWords[raw_sent[i]] << endl;
+        }
+      }
+      //buffer[] = ib + w2l * w + p2l * p + t2l * t
+      buffer_2nd[sent.size() - i] = rectify(affine_transform(args));
+      //bufferi[sent.size() - i] = i;
+      if (Opt.USE_TREELSTM){
+        word_emb_2nd[i] = buffer_2nd[sent.size() - i];
+      }
+    }
+    if (Opt.USE_TREELSTM){
+      vector<unsigned> h;
+      for (int i = 0; i < sent.size(); i++)
+        params_2nd.tree_lstm.add_input(i, h, word_emb_2nd[i]);
+    }
+
+    // dummy symbol to represent the empty buffer
+    buffer_2nd[0] = parameter(*hg, params_2nd.p_buffer_guard);
+    //bufferi[0] = -999;
+    std::vector<BidirectionalLSTMLayer::Output> bilstm_outputs_2nd;
+    if (Opt.USE_BILSTM){
+      params_2nd.buffer_bilstm.add_inputs(hg, buffer_2nd); 
+      params_2nd.buffer_bilstm.get_outputs(hg, bilstm_outputs_2nd); // [bilstm] output of bilstm for buffer, first is fw, second is bw
+    }else{
+      for (auto& b : buffer_2nd)
+        params_2nd.buffer_lstm.add_input(b);
+    }
+
+    vector<Expression> pass_2nd; //variables reperesenting embedding in pass buffer
+    //vector<int> passi; //position of words in pass buffer
+    if (Opt.transition_system == "list-graph" || Opt.transition_system == "list-tree"){   
+      pass_2nd.push_back(parameter(*hg, params_2nd.p_pass_guard));
+      //passi.push_back(-999); // not used for anything
+      params_2nd.pass_lstm.add_input(pass_2nd.back());
+    }
+
+    vector<Expression> stack_2nd;  // variables representing subtree embeddings
+    //vector<int> stacki; // position of words in the sentence of head of subtree
+    stack_2nd.push_back(parameter(*hg, params_2nd.p_stack_guard));
+    //stacki.push_back(-999); // not used for anything
+    // drive dummy symbol on stack through LSTM
+    params_2nd.stack_lstm.add_input(stack_2nd.back());
+
+    //-----------end of 2nd model-------------
+
+    vector<Expression> log_probs;
+    string rootword;
+    unsigned action_count = 0;  // incremented at each prediction
+
+    //init graph connecting vector
+    //vector<bool> dir_graph[sent.size()]; // store the connection between words in sent
+    vector<vector<bool>> dir_graph;
+    vector<bool> v;
+    for (int i = 0; i < (int)sent.size(); i++){
+        v.push_back(false);
+    }
+    for (int i = 0; i < (int)sent.size(); i++){
+        dir_graph.push_back(v);
+    }
+    //remove stack.size() > 2 ||
+    while(((transition_system == "list-graph" || transition_system == "list-tree") && bufferi.size() > 1)
+          || (transition_system == "swap" && (stacki.size() > 2 || bufferi.size() > 1))) {
+      // get list of possible actions for the current parser state
+      vector<unsigned> current_valid_actions;
+      /*if (!build_training_graph){
+      cerr << sent.size() << endl;
+      cerr <<endl<<"[";
+      for (int i = (int)stacki.size() - 1; i > -1 ; --i)
+        cerr << corpus.intToWords[sent[stacki[i]]] <<"-"<<stacki[i]<<", ";
+      cerr <<"][";
+      //for (int i = (int)passi.size() - 1; i > -1 ; --i)
+      //  cerr << corpus.intToWords[sent[passi[i]]]<<"-"<<passi[i]<<", ";
+      //cerr <<"][";
+      for (int i = (int)bufferi.size() - 1; i > -1 ; --i)
+        cerr << corpus.intToWords[sent[bufferi[i]]]<<"-"<<bufferi[i]<<", ";
+      cerr <<"]"<<endl;
+      //}*/
+      if (transition_system == "list-graph" || transition_system == "list-tree")
+        for (auto a: possible_actions) {
+          //cerr << " " << setOfActions[a]<< " ";
+          if (IsActionForbidden(setOfActions[a], bufferi.size(), stacki.size(), sent.size() - 1, dir_graph, stacki, bufferi))
+            continue;
+          //cerr << " <" << setOfActions[a] << "> ";
+          current_valid_actions.push_back(a);
+        }
+      else if (transition_system == "swap")
+        for (auto a: possible_actions) {
+          if (IsActionForbidden2(setOfActions[a], bufferi.size(), stacki.size(), stacki))
+            continue;
+          //cerr << " <" << setOfActions[a] << "> ";
+          current_valid_actions.push_back(a);
+        }
+
+      Expression p_t;
+      if (Opt.USE_ATTENTION && Opt.USE_BILSTM){
+        vector<Expression> c(2);
+        vector<Expression> alpha(bufferi.size());
+        vector<Expression> buf_mat(bufferi.size());
+        //c[0] = stack_lstm.back();
+        for (unsigned i = 0; i < bufferi.size(); ++i){ // buffer[0] is the guard
+          Expression b_fwh = bilstm_outputs[i].first;
+          Expression b_bwh = bilstm_outputs[i].second;
+          buf_mat[i] = concatenate({b_fwh, b_bwh});
+          Expression s_b = concatenate({params.stack_lstm.back(), b_fwh, b_bwh});
+          alpha[i] = rectify(affine_transform({bias_satb, W_satb, s_b}));
+        }
+        Expression a = concatenate(alpha);
+        Expression ae = softmax(a);
+        Expression buffer_mat = concatenate_cols(buf_mat);
+        Expression buf_rep = buffer_mat * ae; // (2 * bilstm_hidden_dim , 1)
+        if (transition_system == "list-graph" || transition_system == "list-tree")
+          // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), P, params.pass_lstm.back(), 
+                                  biB, buf_rep, A, params.action_lstm.back()});
+        else if (transition_system == "swap")
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), biB, buf_rep, A,
+                                  params.action_lstm.back()});
+      }
+      else if (Opt.USE_BILSTM){
+        //cerr << "bilstm: " << bilstm_outputs.size() << " id: " 
+        //<< sent.size() - bufferi.back() << " bufferi: " << bufferi.back() << endl;
+        Expression fwbuf,bwbuf;
+        int idx;
+        if (bufferi.size() > 1)
+          idx = sent.size() - bufferi.back();
+        else
+          idx = 0;
+        fwbuf = bilstm_outputs[idx].first - bilstm_outputs[1].first;
+        bwbuf = bilstm_outputs[1].second - bilstm_outputs[idx].second;
+        // [bilstm] p_t = pbias + S * slstm + P * plstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
+        // [bilstm] p_t = pbias + S * slstm + P * plstm + biB * {blstm_fw + blstm_bw} + A * almst
+        Expression bibuf = concatenate({fwbuf, bwbuf});
+        if (transition_system == "list-graph" || transition_system == "list-tree"){
+          //p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+                                //fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), P, params.pass_lstm.back(), 
+                                biB, bibuf, A, params.action_lstm.back()});
+        }
+        else if (transition_system == "swap"){
+          //p_t = affine_transform({pbias, S, stack_lstm.back(), fwB, fwbuf, bwB, bwbuf, 
+                                //A, action_lstm.back()});
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), biB, bibuf, 
+                                A, params.action_lstm.back()});
+        }
+        //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
+      }
+      else{
+        if (transition_system == "list-graph" || transition_system == "list-tree")
+          // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), P, params.pass_lstm.back(), 
+          												B, params.buffer_lstm.back(), A, params.action_lstm.back()});
+        else if (transition_system == "swap")
+          p_t = affine_transform({pbias, S, params.stack_lstm.back(), B, params.buffer_lstm.back(), 
+          												A, params.action_lstm.back()});
+      }
+      Expression nlp_t = rectify(p_t);
+      // r_t = abias + p2a * nlp
+      Expression r_t = affine_transform({abias, p2a, nlp_t});
+
+      //---------for ensemble 2nd model----------
+      Expression p_t_2nd;
+      if (Opt.USE_ATTENTION && Opt.USE_BILSTM){
+        vector<Expression> c(2);
+        vector<Expression> alpha(bufferi.size());
+        vector<Expression> buf_mat(bufferi.size());
+        //c[0] = stack_lstm.back();
+        for (unsigned i = 0; i < bufferi.size(); ++i){ // buffer[0] is the guard
+          Expression b_fwh = bilstm_outputs_2nd[i].first;
+          Expression b_bwh = bilstm_outputs_2nd[i].second;
+          buf_mat[i] = concatenate({b_fwh, b_bwh});
+          Expression s_b = concatenate({params_2nd.stack_lstm.back(), b_fwh, b_bwh});
+          alpha[i] = rectify(affine_transform({bias_satb_2nd, W_satb_2nd, s_b}));
+        }
+        Expression a = concatenate(alpha);
+        Expression ae = softmax(a);
+        Expression buffer_mat = concatenate_cols(buf_mat);
+        Expression buf_rep = buffer_mat * ae; // (2 * bilstm_hidden_dim , 1)
+        if (transition_system == "list-graph" || transition_system == "list-tree")
+          // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
+          p_t_2nd = affine_transform({pbias_2nd, S_2nd, params_2nd.stack_lstm.back(), P_2nd, 
+                                  params_2nd.pass_lstm.back(), biB_2nd, buf_rep, 
+                                  A_2nd, params_2nd.action_lstm.back()});
+        else if (transition_system == "swap")
+          p_t_2nd = affine_transform({pbias_2nd, S_2nd, params_2nd.stack_lstm.back(), biB_2nd,
+                                  buf_rep, A_2nd, params_2nd.action_lstm.back()});
+      }
+      else if (Opt.USE_BILSTM){
+        //cerr << "bilstm: " << bilstm_outputs.size() << " id: " 
+        //<< sent.size() - bufferi.back() << " bufferi: " << bufferi.back() << endl;
+        Expression fwbuf,bwbuf;
+        int idx;
+        if (bufferi.size() > 1)
+          idx = sent.size() - bufferi.back();
+        else
+          idx = 0;
+        fwbuf = bilstm_outputs_2nd[idx].first - bilstm_outputs_2nd[1].first;
+        bwbuf = bilstm_outputs_2nd[1].second - bilstm_outputs_2nd[idx].second;
+        // [bilstm] p_t = pbias + S * slstm + P * plstm + fwB * blstm_fw + bwB * blstm_bw + A * almst
+        // [bilstm] p_t = pbias + S * slstm + P * plstm + biB * {blstm_fw + blstm_bw} + A * almst
+        Expression bibuf = concatenate({fwbuf, bwbuf});
+        if (transition_system == "list-graph" || transition_system == "list-tree"){
+          //p_t = affine_transform({pbias, S, stack_lstm.back(), P, pass_lstm.back(), 
+                                //fwB, fwbuf, bwB, bwbuf, A, action_lstm.back()});
+          p_t_2nd = affine_transform({pbias_2nd, S_2nd, params_2nd.stack_lstm.back(), P_2nd,
+                                      params_2nd.pass_lstm.back(), biB_2nd, bibuf, A_2nd,
+                                      params_2nd.action_lstm.back()});
+        }
+        else if (transition_system == "swap"){
+          //p_t = affine_transform({pbias, S, stack_lstm.back(), fwB, fwbuf, bwB, bwbuf, 
+                                //A, action_lstm.back()});
+          p_t_2nd = affine_transform({pbias_2nd, S_2nd, params_2nd.stack_lstm.back(), biB_2nd,
+                                      bibuf, A_2nd, params_2nd.action_lstm.back()});
+        }
+        //cerr << " bilstm: " << sent.size() - bufferi.back() << endl;
+      }
+      else{
+        if (transition_system == "list-graph" || transition_system == "list-tree")
+          // p_t = pbias + S * slstm + P * plstm + B * blstm + A * almst
+          p_t_2nd = affine_transform({pbias_2nd, S_2nd, params_2nd.stack_lstm.back(),
+                                      P_2nd, params_2nd.pass_lstm.back(),
+                                      B_2nd, params_2nd.buffer_lstm.back(),
+                                      A_2nd, params_2nd.action_lstm.back()});
+        else if (transition_system == "swap")
+          p_t_2nd = affine_transform({pbias_2nd, S_2nd, params_2nd.stack_lstm.back(),
+                                      B_2nd, params_2nd.buffer_lstm.back(),
+                                      A_2nd, params_2nd.action_lstm.back()});
+      }
+      Expression nlp_t_2nd = rectify(p_t_2nd);
+      // r_t = abias + p2a * nlp
+      Expression r_t_2nd = affine_transform({abias_2nd, p2a_2nd, nlp_t_2nd});
+      //---------end of 2nd model----------
+      Expression r_t_sum = r_t + r_t_2nd;
+      // adist = log_softmax(r_t, current_valid_actions)
+      Expression adiste = log_softmax(r_t_sum, current_valid_actions);
+      vector<float> adist = as_vector(hg->incremental_forward(adiste));
+      double best_score = adist[current_valid_actions[0]];
+      unsigned best_a = current_valid_actions[0];
+      for (unsigned i = 1; i < current_valid_actions.size(); ++i) {
+        if (adist[current_valid_actions[i]] > best_score) {
+          best_score = adist[current_valid_actions[i]];
+          best_a = current_valid_actions[i];
+        }
+      }
+      unsigned action = best_a;
+      if (build_training_graph) {  // if we have reference actions (for training) use the reference action
+        action = correct_actions[action_count];
+        if (best_a == action) { (*right)++; }
+      }
+      if (transition_system == "list-graph" || transition_system == "list-tree"){
+        if (setOfActions[action] == "NS"){
+          double second_score = - DBL_MAX;
+          string second_a = setOfActions[current_valid_actions[0]];
+          for (unsigned i = 1; i < current_valid_actions.size(); ++i) {
+            const string& actionstr=setOfActions[current_valid_actions[i]];
+            const char  ac0 = actionstr[0];
+            //cerr << actionstr << "-" << adist[current_valid_actions[i]] << endl;
+            if (adist[current_valid_actions[i]] > second_score &&
+                (ac0 == 'R' || ac0 == 'L')) {
+                second_score = adist[current_valid_actions[i]];
+                second_a = actionstr;
+            }
+          }
+          //cerr << second_a << endl;
+          if (second_a[0] == 'L' || second_a[0] == 'R'){
+            int headi = (second_a[0] == 'L' ? bufferi.back() : stacki.back());
+            int depi = (second_a[0] == 'L' ? stacki.back() : bufferi.back());
+            cand[headi][depi] = second_a.substr(3, second_a.size() - 4);
+          }
+        }
+      }
+      //if (!build_training_graph)
+      //cerr <<endl<< "gold action: " << setOfActions[action] <<endl;
+      ++action_count;
+      log_probs.push_back(pick(adiste, action));
+      if (transition_system == "swap"){
+        apply_action_2nd(hg,
+                   params_2nd.stack_lstm, params_2nd.buffer_lstm, params_2nd.action_lstm, 
+                   params_2nd.tree_lstm,
+                   buffer_2nd, bufferi, stack_2nd, stacki,
+                   action, setOfActions, sent, intToWords, cbias_2nd, H_2nd, D_2nd, R_2nd, 
+                   &rootword, dir_graph, word_emb_2nd);
+        apply_action(hg,
+                   params.stack_lstm, params.buffer_lstm, params.action_lstm, params.tree_lstm,
+                   buffer, bufferi, stack, stacki, results,
+                   action, setOfActions, sent, intToWords, cbias, H, D, R, 
+                   &rootword, dir_graph, word_emb);
+      }
+      else if (transition_system == "list-graph" || transition_system == "list-tree") {
+        apply_action_2nd(hg,
+                   params_2nd.stack_lstm, params_2nd.buffer_lstm, params_2nd.action_lstm,
+                   params_2nd.tree_lstm,
+                   buffer_2nd, bufferi, stack_2nd, stacki,
+                   action, setOfActions, sent, intToWords, cbias_2nd, H_2nd, D_2nd, R_2nd,
+                   &rootword, dir_graph, word_emb_2nd, params_2nd.pass_lstm,
+                   pass_2nd, passi);
+        apply_action(hg,
+                   params.stack_lstm, params.buffer_lstm, params.action_lstm, params.tree_lstm,
+                   buffer, bufferi, stack, stacki, results,
+                   action, setOfActions, sent, intToWords, cbias, H, D, R,
+                   &rootword, dir_graph, word_emb, params.pass_lstm,
+                   pass, passi);
+      }
+    }
+    if (transition_system == "swap"){
+        assert(stack.size() == 2); // guard symbol, root
+        assert(stacki.size() == 2);
+    }
+    assert(buffer.size() == 1); // guard symbol
+    assert(bufferi.size() == 1);
+    Expression tot_neglogprob = -sum(log_probs);
+    assert(tot_neglogprob.pg != nullptr);
+    return results;
+	}
+
   // for swap-based algorithm
   void LSTMParser::apply_action( ComputationGraph* hg,
                    LSTMBuilder& stack_lstm,
@@ -1008,9 +1597,121 @@ vector<unsigned> LSTMParser::log_prob_parser(ComputationGraph* hg,
         stack.push_back(nlcomposed);
         stacki.push_back(headi);
     }
-  }
+}
 
-  // for list-based algorithms
+// for 2nd model of swap-based algorithm, do not change configuration and graph
+void LSTMParser::apply_action_2nd( ComputationGraph* hg,
+                   LSTMBuilder& stack_lstm,
+                   LSTMBuilder& buffer_lstm,
+                   LSTMBuilder& action_lstm,
+                   TheirTreeLSTMBuilder& tree_lstm,
+                   vector<Expression>& buffer,
+                   const vector<int>& bufferi,
+                   vector<Expression>& stack,
+                   const vector<int>& stacki,
+                   //vector<unsigned>& results,
+                   unsigned action,
+                   const vector<string>& setOfActions,
+                   const vector<unsigned>& sent,  // sent with oovs replaced
+                   const map<unsigned, std::string>& intToWords,
+                   const Expression& cbias,
+                   const Expression& H,
+                   const Expression& D,
+                   const Expression& R,
+                   string* rootword,
+                   const vector<vector<bool>>& graph,
+                   const vector<Expression>& word_emb) {
+
+    Expression actione = lookup(*hg, params_2nd.p_a, action);
+    action_lstm.add_input(actione);
+
+    // get relation embedding from action (TODO: convert to relation from action?)
+    //cerr << "get relation embedding from action\n";
+    Expression relation = lookup(*hg, params_2nd.p_r, action);
+
+    const string &actionString = setOfActions[action];
+    const char ac = actionString[0];
+    const char ac2 = actionString[1];
+    //cerr << ac << ac2 << endl;
+    // Execute one of the actions
+    if (Opt.transition_system == "swap"){
+      if (ac == 'S' && ac2 == 'H') {  // SHIFT
+        assert(buffer.size() > 1); // dummy symbol means > 1 (not >= 1)
+        stack.push_back(buffer.back());
+        stack_lstm.add_input(buffer.back());
+        buffer.pop_back();
+        if (!Opt.USE_BILSTM)
+          buffer_lstm.rewind_one_step();
+        //stacki.push_back(bufferi.back());
+        //bufferi.pop_back();
+      }
+      else if (ac == 'S' && ac2 == 'W') { //SWAP --- Miguel
+        assert(stack.size() > 2); // dummy symbol means > 2 (not >= 2)
+
+        //std::cout<<"SWAP: "<<"stack.size:"<<stack.size()<<"\n";
+
+        Expression toki, tokj;
+        unsigned ii = 0, jj = 0;
+        tokj = stack.back();
+        jj = stacki.back();
+        stack.pop_back();
+        //stacki.pop_back();
+
+        toki = stack.back();
+        //ii = stacki.back();
+        ii = stacki.at(stacki.size() - 2);
+        stack.pop_back();
+        //stacki.pop_back();
+
+        buffer.push_back(toki);
+        //bufferi.push_back(ii);
+
+        stack_lstm.rewind_one_step();
+        stack_lstm.rewind_one_step();
+
+        if (!Opt.USE_BILSTM)
+          buffer_lstm.add_input(buffer.back());
+
+        stack.push_back(tokj);
+        //stacki.push_back(jj);
+
+        stack_lstm.add_input(stack.back());
+      }
+      else { // LEFT or RIGHT
+        assert(stack.size() > 2); // dummy symbol means > 2 (not >= 2)
+        assert(ac == 'L' || ac == 'R');
+        Expression dep, head;
+        unsigned depi = 0, headi = 0;
+        (ac == 'R' ? dep : head) = stack.back();
+        (ac == 'R' ? depi : headi) = stacki.back();
+        stack.pop_back();
+        //stacki.pop_back();
+        (ac == 'R' ? head : dep) = stack.back();
+        (ac == 'R' ? headi : depi) = stacki.at(stacki.size() - 2);
+        //(ac == 'R' ? headi : depi) = stacki.back();
+        stack.pop_back();
+        //stacki.pop_back();
+        if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
+        // composed = cbias + H * head + D * dep + R * relation
+        //graph[headi][depi] = true;
+        Expression nlcomposed;
+        if (Opt.USE_TREELSTM){
+            vector<unsigned> c = get_children(headi, graph);
+            nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph), word_emb[headi]);
+        } else{
+            Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
+            nlcomposed = tanh(composed);
+        }
+        stack_lstm.rewind_one_step();
+        stack_lstm.rewind_one_step();
+        stack_lstm.add_input(nlcomposed);
+        stack.push_back(nlcomposed);
+        //stacki.push_back(headi);
+      }
+    } // if (swap-based)
+}
+
+// for list-based algorithms
 void LSTMParser::apply_action( ComputationGraph* hg,
                    LSTMBuilder& stack_lstm,
                    LSTMBuilder& buffer_lstm,
@@ -1179,7 +1880,174 @@ void LSTMParser::apply_action( ComputationGraph* hg,
                 }
             }
         }
-  }
+}
+
+// for 2nd model of list-based algorithm, do not change configuration and graph
+void LSTMParser::apply_action_2nd( ComputationGraph* hg,
+                   LSTMBuilder& stack_lstm,
+                   LSTMBuilder& buffer_lstm,
+                   LSTMBuilder& action_lstm,
+                   TheirTreeLSTMBuilder& tree_lstm,
+                   vector<Expression>& buffer,
+                   const vector<int>& bufferi,
+                   vector<Expression>& stack,
+                   const vector<int>& stacki,
+                   //vector<unsigned>& results,
+                   unsigned action,
+                   const vector<string>& setOfActions,
+                   const vector<unsigned>& sent,  // sent with oovs replaced
+                   const map<unsigned, std::string>& intToWords,
+                   const Expression& cbias,
+                   const Expression& H,
+                   const Expression& D,
+                   const Expression& R,
+                   string* rootword,
+                   const vector<vector<bool>>& graph,
+                   const vector<Expression>& word_emb,
+                   LSTMBuilder& pass_lstm,
+                   vector<Expression>& pass,
+                   const vector<int>& passi) {
+
+    // add current action to action LSTM
+    //cerr << "add current action to action LSTM\n";
+    Expression actione = lookup(*hg, params_2nd.p_a, action);
+    action_lstm.add_input(actione);
+
+    // get relation embedding from action (TODO: convert to relation from action?)
+    //cerr << "get relation embedding from action\n";
+    Expression relation = lookup(*hg, params_2nd.p_r, action);
+
+    const string &actionString = setOfActions[action];
+    const char ac = actionString[0];
+    const char ac2 = actionString[1];
+    //cerr << ac << ac2 << endl;
+    // Execute one of the actions
+    
+    if (transition_system == "list-graph" || transition_system == "list-tree"){
+      if (ac =='N' && ac2=='S') {  // NO-SHIFT
+        assert(bufferi.size() > 1); // dummy symbol means > 1 (not >= 1)
+        int pass_size = (int)pass.size();
+        for (int i = 1; i < pass_size; i++){  //do not move pass_guard
+          stack.push_back(pass.back());
+          stack_lstm.add_input(pass.back());
+          pass.pop_back();
+          pass_lstm.rewind_one_step();
+          //stacki.push_back(passi.back());
+          //passi.pop_back();
+        }
+        stack.push_back(buffer.back());
+        stack_lstm.add_input(buffer.back());
+        buffer.pop_back();
+        if (!Opt.USE_BILSTM)
+          buffer_lstm.rewind_one_step();
+        //stacki.push_back(bufferi.back());
+        //bufferi.pop_back();
+      } // if (NS)
+      else if (ac=='N' && ac2=='R'){
+        assert(stacki.size() > 1);
+        stack.pop_back();
+        //stacki.pop_back();
+        stack_lstm.rewind_one_step();
+      } // if (NR)
+      else if (ac=='N' && ac2=='P'){
+        assert(stacki.size() > 1);
+        pass.push_back(stack.back());
+        pass_lstm.add_input(stack.back());
+        //passi.push_back(stacki.back());
+        stack.pop_back();
+        //stacki.pop_back();
+        stack_lstm.rewind_one_step();
+      } // if (NP)
+      else if (ac=='L'){ // LEFT-REDUCE or LEFT-PASS
+        assert(stacki.size() > 1 && bufferi.size() > 1);
+        Expression dep, head;
+        unsigned depi, headi;
+        dep = stack.back();
+        depi = stacki.back();
+        stack.pop_back();
+        //stacki.pop_back();
+        head = buffer.back();
+        headi = bufferi.back();
+        buffer.pop_back();
+        //bufferi.pop_back();
+        //graph[headi][depi] = true; // add this arc to graph
+        if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
+        Expression nlcomposed;
+        if (Opt.USE_TREELSTM){
+          vector<unsigned> c = get_children(headi, graph);
+          nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph), word_emb[headi]);
+        } else {
+          Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
+          nlcomposed = tanh(composed);
+        }
+        stack_lstm.rewind_one_step();
+        if (!Opt.USE_BILSTM){
+          buffer_lstm.rewind_one_step();
+          buffer_lstm.add_input(nlcomposed);
+        }
+        buffer.push_back(nlcomposed);
+        //bufferi.push_back(headi);
+        if (ac2 == 'P'){ // LEFT-PASS
+          pass_lstm.add_input(dep);
+          pass.push_back(dep);
+          //passi.push_back(depi);
+        }
+      } // if (LR || LP)
+      else if (ac=='R'){ // RIGHT-SHIFT or RIGHT-PASSA
+        assert(stacki.size() > 1 && bufferi.size() > 1);
+        Expression dep, head;
+        unsigned depi, headi;
+        dep = buffer.back();
+        depi = bufferi.back();
+        buffer.pop_back();
+        //bufferi.pop_back();
+        head = stack.back();
+        headi = stacki.back();
+        stack.pop_back();
+        //stacki.pop_back();
+        //graph[headi][depi] = true; // add this arc to graph
+        if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
+        Expression nlcomposed;
+        if (Opt.USE_TREELSTM){
+          vector<unsigned> c = get_children(headi, graph);
+          //cerr << "children: "; for(int i = 0; i < c.size(); i++) cerr << c[i] << " "; cerr << endl;
+          nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph),word_emb[headi]);
+        } else {
+          Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
+          nlcomposed = tanh(composed);
+        }
+        stack_lstm.rewind_one_step();
+        if (!Opt.USE_BILSTM)
+          buffer_lstm.rewind_one_step();
+        if (ac2 == 'S'){ //RIGHT-SHIFT
+          stack_lstm.add_input(nlcomposed);
+          stack.push_back(nlcomposed);
+          //stacki.push_back(headi);
+          int pass_size = (int)pass.size();
+          for (int i = 1; i < pass_size; i++){  //do not move pass_guard
+            stack.push_back(pass.back());
+            stack_lstm.add_input(pass.back());
+            pass.pop_back();
+            pass_lstm.rewind_one_step();
+            //stacki.push_back(passi.back());
+            //passi.pop_back();
+          }
+          stack_lstm.add_input(dep);
+          stack.push_back(dep);
+          //stacki.push_back(depi);
+        }
+        else if (ac2 == 'P'){
+          pass_lstm.add_input(nlcomposed);
+          pass.push_back(nlcomposed);
+          //passi.push_back(headi);
+          if (!Opt.USE_BILSTM)
+            buffer_lstm.add_input(dep);
+          buffer.push_back(dep);
+          //bufferi.push_back(depi);
+        }
+      } // if (RS || RP)
+    } // if (list-based)
+}
 
 void LSTMParser::process_headless_search_all(const vector<unsigned>& sent, const vector<unsigned>& sentPos, 
                                                         const vector<string>& setOfActions, 
@@ -1603,7 +2471,11 @@ void LSTMParser::test(string test_data_file) {
       //cerr<<"compute action" << endl;
       {
       ComputationGraph cg;
-      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+      if (Opt.USE_2MODEL)
+          pred = log_prob_parser_ensemble(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                              corpus.actions,corpus.intToWords, &right, cand);
+      else
+      		pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
                               corpus.actions,corpus.intToWords, &right, cand);
       }
       std::vector<std::vector<string>> hyp = compute_heads(sentence, pred);
@@ -1659,7 +2531,11 @@ void LSTMParser::predict_dev() {
       //cerr<<"compute action" << endl;
       {
       ComputationGraph cg;
-      pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+      if (Opt.USE_2MODEL)
+          pred = log_prob_parser_ensemble(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
+                              corpus.actions,corpus.intToWords, &right, cand);
+      else
+      		pred = log_prob_parser(&cg, sentence, tsentence, sentencePos, std::vector<unsigned>(), 
                               corpus.actions,corpus.intToWords, &right, cand);
       }
       /*cerr << cand.size() << endl;
