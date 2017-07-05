@@ -26,6 +26,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     ("unk_strategy,o", po::value<unsigned>()->default_value(1), "Unknown word strategy: 1 = singletons become UNK with probability unk_prob")
     ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
     ("model,m", po::value<string>(), "Load saved model from this file")
+    ("model2", po::value<string>(), "Load 2nd saved model from this file")
     ("use_pos_tags,P", "make POS tags visible to parser")
     ("use_bilstm,B", "use bilstm for buffer")
     ("use_treelstm,R", "use treelstm for subtree in stack")
