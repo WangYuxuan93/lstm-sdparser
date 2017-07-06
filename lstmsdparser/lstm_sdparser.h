@@ -14,6 +14,7 @@
 
 #include <unordered_map>
 #include <unordered_set>
+#include <queue>
 
 #include <execinfo.h>
 #include <unistd.h>
@@ -164,6 +165,14 @@ public:
   bool has_path_to(int w1, int w2, const std::vector<std::vector<string>>& graph);
 
   vector<unsigned> get_children(unsigned id, const vector<vector<bool>> graph);
+  vector<unsigned> get_heads(unsigned id, const vector<vector<bool>> graph);
+  vector<unsigned> get_update_order(unsigned id, const vector<vector<bool>> graph);
+
+  bool update_ancestors(unsigned id, const vector<vector<bool>> graph, 
+                        TheirTreeLSTMBuilder& tree_lstm, const vector<Expression>& word_emb,
+                        LSTMBuilder& stack_lstm, vector<Expression>& stack, vector<int>& stacki,
+                        LSTMBuilder& pass_lstm, vector<Expression>& pass, vector<int>& passi,
+                        LSTMBuilder& buffer_lstm, vector<Expression>& buffer, vector<int>& bufferi);
 
   bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, 
                           const std::vector<std::vector<bool>> dir_graph,//const std::vector<bool>  dir_graph [], 
