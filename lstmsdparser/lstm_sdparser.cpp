@@ -385,22 +385,59 @@ vector<unsigned> LSTMParser::get_update_order(unsigned id, const vector<vector<b
 
 bool LSTMParser::update_ancestors(unsigned id, const vector<vector<bool>> graph, 
 												TheirTreeLSTMBuilder& tree_lstm, const vector<Expression>& word_emb,
-												LSTMBuilder& stack_lstm, vector<Expression>& stack, vector<int>& stacki,
-												LSTMBuilder& pass_lstm, vector<Expression>& pass, vector<int>& passi,
-                   			LSTMBuilder& buffer_lstm, vector<Expression>& buffer, vector<int>& bufferi) {
+												LSTMBuilder& stack_lstm, vector<Expression>& stack, const vector<int>& stacki,
+												LSTMBuilder& pass_lstm, vector<Expression>& pass, const vector<int>& passi,
+                   			LSTMBuilder& buffer_lstm, vector<Expression>& buffer, const vector<int>& bufferi) {
 	vector<unsigned> order = get_update_order(id, graph);
-	/*cerr << "update order: "<< endl;
-	for (auto n : order)
+	//cerr << "update order: "<< endl;
+	/*for (auto n : order)
 		cerr << n << " -> ";*/
-	vector <int>::iterator itr;
+	vector <int>::const_iterator itr;
+	bool s_f, b_f, p_f;
+	s_f = false; b_f = false; p_f = false;
 	for (auto n : order){
+		//cerr << "\nupdate: " << n << endl;
 		Expression new_node = tree_lstm.add_input(n, get_children(n, graph),word_emb[n]);
 		itr = find(stacki.begin(), stacki.end(), n);
 		if (itr != stacki.end()){
+			s_f = true;
 			int pos = distance(stacki.begin(), itr);
 			stack[pos] = new_node;
 		} // consider to save all new nodes in stack and start new sequence in stack_lstm
+		itr = find(passi.begin(), passi.end(), n);
+		if (itr != passi.end()){
+			p_f = true;
+			int pos = distance(passi.begin(), itr);
+			pass[pos] = new_node;
+		}
+		if (!Opt.USE_BILSTM){
+			itr = find(bufferi.begin(), bufferi.end(), n);
+			if (itr != bufferi.end()){
+				b_f = true;
+				int pos = distance(bufferi.begin(), itr);
+				buffer[pos] = new_node;
+			}
+		}
 	}
+	if (s_f){//cerr << "stack update "  << endl;
+		stack_lstm.start_new_sequence();
+		for (unsigned i = 0; i < stack.size(); ++i){
+			stack_lstm.add_input(stack.back());
+		}
+	}
+	if (p_f){//cerr << "pass update "  << endl;
+		pass_lstm.start_new_sequence();
+		for (unsigned i = 0; i < pass.size(); ++i){
+			pass_lstm.add_input(pass.back());
+		}
+	}
+	if (b_f){//cerr << "buffer update "  << endl;
+		buffer_lstm.start_new_sequence();
+		for (unsigned i = 0; i < buffer.size(); ++i){
+			buffer_lstm.add_input(buffer.back());
+		}
+	}
+	
 	return true;
 }
 
@@ -1801,7 +1838,7 @@ void LSTMParser::apply_action( ComputationGraph* hg,
       const string& actionString=setOfActions[action];
       const char ac = actionString[0];
       const char ac2 = actionString[1];
-      cerr << ac << ac2 << endl;
+      //cerr << ac << ac2 << endl;
 
 			if (transition_system == "list-graph" || transition_system == "list-tree"){
             if (ac =='N' && ac2=='S') {  // NO-SHIFT
@@ -1843,10 +1880,14 @@ void LSTMParser::apply_action( ComputationGraph* hg,
                 depi = stacki.back();
                 stack.pop_back();
                 stacki.pop_back();
+                stack_lstm.rewind_one_step();
                 head = buffer.back();
                 headi = bufferi.back();
                 buffer.pop_back();
                 bufferi.pop_back();
+                if (!Opt.USE_BILSTM){
+                  buffer_lstm.rewind_one_step();
+                }
                 graph[headi][depi] = true; // add this arc to graph
                 //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
@@ -1864,9 +1905,9 @@ void LSTMParser::apply_action( ComputationGraph* hg,
                   Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                   nlcomposed = tanh(composed);
                 }
-                stack_lstm.rewind_one_step();
+                
                 if (!Opt.USE_BILSTM){
-                  buffer_lstm.rewind_one_step();
+                  //buffer_lstm.rewind_one_step();
                   buffer_lstm.add_input(nlcomposed);
                 }
                 buffer.push_back(nlcomposed);
@@ -1884,10 +1925,13 @@ void LSTMParser::apply_action( ComputationGraph* hg,
                 depi = bufferi.back();
                 buffer.pop_back();
                 bufferi.pop_back();
+                if (!Opt.USE_BILSTM)
+                  buffer_lstm.rewind_one_step();
                 head = stack.back();
                 headi = stacki.back();
                 stack.pop_back();
                 stacki.pop_back();
+                stack_lstm.rewind_one_step();
                 graph[headi][depi] = true; // add this arc to graph
                 //dir_graph[headi][depi] = REL_EXIST;
                 if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
@@ -1899,15 +1943,13 @@ void LSTMParser::apply_action( ComputationGraph* hg,
                     cerr << c[i] << " ";
                   cerr << endl;*/
                   nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph),word_emb[headi]);
-                  update_ancestors(headi, graph, tree_lstm, word_emb,stack_lstm, stack, stacki, 
+                  update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
                   								pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
                 } else{
                   Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                   nlcomposed = tanh(composed);
                 }
-                stack_lstm.rewind_one_step();
-                if (!Opt.USE_BILSTM)
-                    buffer_lstm.rewind_one_step();
+                
                 if (ac2 == 'S'){ //RIGHT-SHIFT
                     stack_lstm.add_input(nlcomposed);
                     stack.push_back(nlcomposed);
@@ -2021,8 +2063,12 @@ void LSTMParser::apply_action_2nd( ComputationGraph* hg,
         dep = stack.back();
         depi = stacki.back();
         stack.pop_back();
+        stack_lstm.rewind_one_step();
         //stacki.pop_back();
         head = buffer.back();
+        if (!Opt.USE_BILSTM){
+          buffer_lstm.rewind_one_step();
+        }
         headi = bufferi.back();
         buffer.pop_back();
         //bufferi.pop_back();
@@ -2030,15 +2076,17 @@ void LSTMParser::apply_action_2nd( ComputationGraph* hg,
         if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
         Expression nlcomposed;
         if (Opt.USE_TREELSTM){
-          vector<unsigned> c = get_children(headi, graph);
+          //vector<unsigned> c = get_children(headi, graph);
           nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph), word_emb[headi]);
+          update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
+                  								pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
         } else {
           Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
           nlcomposed = tanh(composed);
         }
-        stack_lstm.rewind_one_step();
+        
         if (!Opt.USE_BILSTM){
-          buffer_lstm.rewind_one_step();
+          //buffer_lstm.rewind_one_step();
           buffer_lstm.add_input(nlcomposed);
         }
         buffer.push_back(nlcomposed);
@@ -2056,25 +2104,27 @@ void LSTMParser::apply_action_2nd( ComputationGraph* hg,
         dep = buffer.back();
         depi = bufferi.back();
         buffer.pop_back();
+        if (!Opt.USE_BILSTM)
+          buffer_lstm.rewind_one_step();
         //bufferi.pop_back();
         head = stack.back();
         headi = stacki.back();
         stack.pop_back();
+        stack_lstm.rewind_one_step();
         //stacki.pop_back();
         //graph[headi][depi] = true; // add this arc to graph
         if (headi == sent.size() - 1) *rootword = intToWords.find(sent[depi])->second;
         Expression nlcomposed;
         if (Opt.USE_TREELSTM){
-          vector<unsigned> c = get_children(headi, graph);
+          //vector<unsigned> c = get_children(headi, graph);
           //cerr << "children: "; for(int i = 0; i < c.size(); i++) cerr << c[i] << " "; cerr << endl;
           nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph),word_emb[headi]);
+          update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
+                  								pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
         } else {
           Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
           nlcomposed = tanh(composed);
         }
-        stack_lstm.rewind_one_step();
-        if (!Opt.USE_BILSTM)
-          buffer_lstm.rewind_one_step();
         if (ac2 == 'S'){ //RIGHT-SHIFT
           stack_lstm.add_input(nlcomposed);
           stack.push_back(nlcomposed);

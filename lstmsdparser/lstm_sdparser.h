@@ -170,9 +170,9 @@ public:
 
   bool update_ancestors(unsigned id, const vector<vector<bool>> graph, 
                         TheirTreeLSTMBuilder& tree_lstm, const vector<Expression>& word_emb,
-                        LSTMBuilder& stack_lstm, vector<Expression>& stack, vector<int>& stacki,
-                        LSTMBuilder& pass_lstm, vector<Expression>& pass, vector<int>& passi,
-                        LSTMBuilder& buffer_lstm, vector<Expression>& buffer, vector<int>& bufferi);
+                        LSTMBuilder& stack_lstm, vector<Expression>& stack, const vector<int>& stacki,
+                        LSTMBuilder& pass_lstm, vector<Expression>& pass, const vector<int>& passi,
+                        LSTMBuilder& buffer_lstm, vector<Expression>& buffer, const vector<int>& bufferi);
 
   bool IsActionForbidden(const string& a, unsigned bsize, unsigned ssize, unsigned root, 
                           const std::vector<std::vector<bool>> dir_graph,//const std::vector<bool>  dir_graph [], 
