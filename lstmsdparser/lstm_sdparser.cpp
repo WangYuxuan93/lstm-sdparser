@@ -10,7 +10,7 @@ namespace po = boost::program_options;
 //struct LSTMParser {
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
-                              "sgd", "list-tree", "", "4000", true, false, false, false,
+                              "sgd", "list-tree", "zh", "", "4000", true, false, false, false,
                               true, false, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
@@ -463,13 +463,14 @@ bool LSTMParser::IsActionForbidden(const string& a, unsigned bsize, unsigned ssi
             if (has_path_to(s0, b0, dir_graph)) return true;
             //if (b0 == root && rel != "Root") return true;
             //if (b0 == root && rel == "Root" && root_num >= 1) return true;
-            //if (b0 == (int)root && !((cpyp::StrToLower(rel) == "root")
-                                     //&& root_num == 0 && s0_head_num == 0)) return true;
+            if (Opt.corpus == "sem16" && b0 == (int)root && !((cpyp::StrToLower(rel) == "root")
+                                     && root_num == 0 && s0_head_num == 0)) return true;
             /*if (b0 == (int)root && 
               !(((cpyp::StrToLower(rel) == "root" && nr_root_rel == 0 ) 
                 || cpyp::StrToLower(rel) == "-null-")
                 && s0_head_num == 0)) */  // for sem15, root node may have other head
-              if (b0 == (int)root && 
+              //if (Opt.corpus == "sem16" && b0 == (int)root && !(cpyp::StrToLower(rel) == "root")) return true;
+            if (Opt.corpus == "sem15" && b0 == (int)root && 
               !(cpyp::StrToLower(rel) == "root" || cpyp::StrToLower(rel) == "-null-"))
               return true;
             if (b0 != (int)root && cpyp::StrToLower(rel) == "root") return true;

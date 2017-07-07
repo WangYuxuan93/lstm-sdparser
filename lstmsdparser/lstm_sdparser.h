@@ -73,6 +73,7 @@ typedef struct Options {
   unsigned max_itr; // 10000
   std::string optimizer;
 	std::string transition_system; // "list"
+  std::string corpus; // "sem16"
   std::string dynet_seed;
   std::string dynet_mem;
 	bool USE_POS; // true

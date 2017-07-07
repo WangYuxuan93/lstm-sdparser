@@ -51,6 +51,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     ("has_head", "Is every word required to have at least one head?")
     ("train,t", "Should training be run?")
     ("words,w", po::value<string>()->default_value(""), "Pretrained word embeddings")
+    ("corpus,c", po::value<string>()->default_value("sem16"), "Corpus(sem15 or sem16)")
     ("help,h", "Help");
   po::options_description dcmdline_options;
   dcmdline_options.add(opts);
@@ -86,6 +87,7 @@ int main(int argc, char** argv) {
   Opt.max_itr = conf["max_itr"].as<unsigned>();
 
   Opt.transition_system = conf["transition_system"].as<string>();
+  Opt.corpus = conf["corpus"].as<string>();
   Opt.LAYERS = conf["layers"].as<unsigned>();
   Opt.INPUT_DIM = conf["input_dim"].as<unsigned>();
   Opt.PRETRAINED_DIM = conf["pretrained_dim"].as<unsigned>();
@@ -98,6 +100,7 @@ int main(int argc, char** argv) {
 
   if (DEBUG){
     cerr << "Transition System: " << Opt.transition_system << endl;
+    cerr << "Corpus: " << Opt.corpus << endl;
     cerr << "Max training iteration: " << Opt.max_itr << endl;
     cerr << "Using " << Opt.optimizer << " as optimizer." << endl;
     if (Opt.USE_BILSTM)
