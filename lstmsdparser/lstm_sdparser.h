@@ -79,6 +79,7 @@ typedef struct Options {
 	bool USE_POS; // true
   bool USE_BILSTM; // false
   bool USE_TREELSTM; // false
+  bool UPDATE_ANCESTOR; // false
   bool USE_ATTENTION; // false
   bool POST_PROCESS; // true
   bool SDP_OUTPUT; // false

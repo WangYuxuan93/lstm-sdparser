@@ -11,7 +11,7 @@ namespace po = boost::program_options;
 
 LSTMParser::LSTMParser(): Opt({2, 100, 200, 50, 100, 200, 50, 50, 100, 10000, 
                               "sgd", "list-tree", "zh", "", "4000", true, false, false, false,
-                              true, false, false, false}) {}
+                              false, true, false, false, false}) {}
 
 LSTMParser::~LSTMParser() {}
 
@@ -1900,8 +1900,9 @@ void LSTMParser::apply_action( ComputationGraph* hg,
                     cerr << c[i] << " ";
                   cerr << endl;*/
                   nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph), word_emb[headi]);
-                  update_ancestors(headi, graph, tree_lstm, word_emb,stack_lstm, stack, stacki, 
-                  								pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
+                  if (Opt.UPDATE_ANCESTOR)
+                  	update_ancestors(headi, graph, tree_lstm, word_emb,stack_lstm, stack, stacki, 
+                  									pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
                 } else{
                   Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                   nlcomposed = tanh(composed);
@@ -1944,8 +1945,9 @@ void LSTMParser::apply_action( ComputationGraph* hg,
                     cerr << c[i] << " ";
                   cerr << endl;*/
                   nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph),word_emb[headi]);
-                  update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
-                  								pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
+                  if (Opt.UPDATE_ANCESTOR)
+                  	update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
+                  									pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
                 } else{
                   Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
                   nlcomposed = tanh(composed);
@@ -2079,7 +2081,8 @@ void LSTMParser::apply_action_2nd( ComputationGraph* hg,
         if (Opt.USE_TREELSTM){
           //vector<unsigned> c = get_children(headi, graph);
           nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph), word_emb[headi]);
-          update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
+          if (Opt.UPDATE_ANCESTOR)
+          	update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
                   								pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
         } else {
           Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});
@@ -2120,7 +2123,8 @@ void LSTMParser::apply_action_2nd( ComputationGraph* hg,
           //vector<unsigned> c = get_children(headi, graph);
           //cerr << "children: "; for(int i = 0; i < c.size(); i++) cerr << c[i] << " "; cerr << endl;
           nlcomposed = tree_lstm.add_input(headi, get_children(headi, graph),word_emb[headi]);
-          update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
+          if (Opt.UPDATE_ANCESTOR)
+          	update_ancestors(headi, graph, tree_lstm, word_emb, stack_lstm, stack, stacki, 
                   								pass_lstm, pass, passi, buffer_lstm, buffer, bufferi);
         } else {
           Expression composed = affine_transform({cbias, H, head, D, dep, R, relation});

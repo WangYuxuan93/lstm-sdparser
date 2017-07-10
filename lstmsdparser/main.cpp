@@ -29,7 +29,8 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     ("model2", po::value<string>(), "Load 2nd saved model from this file")
     ("use_pos_tags,P", "make POS tags visible to parser")
     ("use_bilstm,B", "use bilstm for buffer")
-    ("use_treelstm,R", "use treelstm for subtree in stack")
+    ("use_treelstm,R", "use treelstm for sub-graph")
+    ("update_ancestor", "Should update all ancestor in treelstm? (Use with -R)")
     ("use_attention,A", "use attention from stack top to whole buffer")
     ("data_type", po::value<string>()->default_value("sdpv2"), "Data type(sdpv2 - news, text - textbook), only for distinguishing model name")
     ("optimizer", po::value<string>()->default_value("sgd"), "Optimizer(sgd, adam)")
@@ -79,6 +80,7 @@ int main(int argc, char** argv) {
   Opt.USE_POS = conf.count("use_pos_tags");
   Opt.USE_BILSTM = conf.count("use_bilstm");
   Opt.USE_TREELSTM = conf.count("use_treelstm");
+  Opt.UPDATE_ANCESTOR = conf.count("update_ancestor");
   Opt.USE_ATTENTION = conf.count("use_attention");
   Opt.USE_2MODEL = conf.count("model2");
   Opt.POST_PROCESS = conf.count("post");
@@ -106,7 +108,9 @@ int main(int argc, char** argv) {
     if (Opt.USE_BILSTM)
       cerr << "Using bilstm for buffer." << endl;
     if (Opt.USE_TREELSTM)
-      cerr << "Using treelstm for subtree in stack." << endl;
+      cerr << "Using treelstm for sub-graph." << endl;
+    if (Opt.UPDATE_ANCESTOR)
+      cerr << "Update all ancestors in treelstm." << endl;
     if (Opt.USE_ATTENTION)
       cerr << "Using attention." << endl;
     if (Opt.POST_PROCESS)
