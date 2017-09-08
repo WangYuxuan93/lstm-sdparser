@@ -125,6 +125,33 @@ typedef struct Parameters {
   Parameter p_bias_satb; // [attention] bias for stack top attending buffer
 } Parameters;
 
+typedef struct Exprs {
+  Expression biB;
+  Expression W_satb;
+  Expression bias_satb;
+  Expression pbias;
+  Expression H;
+  Expression D;
+  Expression R;
+  Expression cbias;
+  Expression S;
+  Expression B;
+  Expression P;
+  Expression A;
+  Expression ib;
+  Expression w2l;
+  Expression p2l;
+  Expression t2l;
+  Expression p2a;
+  Expression abias;
+  Expression action_start;
+  vector<Expression> buffer;
+  vector<Expression> pass;
+  vector<Expression> stack;
+  vector<Expression> word_emb;
+  std::vector<BidirectionalLSTMLayer::Output> bilstm_outputs;
+} Exprs;
+
 static volatile bool requested_stop;
 
 class LSTMParser {
@@ -296,6 +323,24 @@ public:
                      const map<unsigned, std::string>& intToWords,
                      double *right, 
                      std::vector<std::vector<string>>& cand);
+
+  bool load_params(ComputationGraph* hg, Exprs& expr, Parameters& params,
+                      const vector<unsigned>& raw_sent,  // raw sentence
+                      const vector<unsigned>& sent,  // sent with oovs replaced
+                      const vector<unsigned>& sentPos);
+
+  Expression score(Exprs& exprs, Parameters& params);
+
+  std::vector<unsigned> log_prob_parser_ensemble_n(ComputationGraph* hg,
+                     const std::vector<unsigned>& raw_sent,  // raw sentence
+                     const std::vector<unsigned>& sent,  // sent with oovs replaced
+                     const std::vector<unsigned>& sentPos,
+                     const std::vector<unsigned>& correct_actions,
+                     const std::vector<string>& setOfActions,
+                     const map<unsigned, std::string>& intToWords,
+                     double *right, 
+                     std::vector<std::vector<string>>& cand,
+                     int model_number);
 
   bool IsActionForbidden2(const string& a, unsigned bsize, unsigned ssize, vector<int> stacki);
 
