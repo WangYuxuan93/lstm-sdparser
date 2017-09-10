@@ -27,6 +27,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
     ("unk_prob,u", po::value<double>()->default_value(0.2), "Probably with which to replace singletons with UNK in training data")
     ("model,m", po::value<string>(), "Load saved model from this file")
     ("model2", po::value<string>(), "Load 2nd saved model from this file")
+    ("model3", po::value<string>(), "Load 3rd saved model from this file")
     ("use_pos_tags,P", "make POS tags visible to parser")
     ("use_bilstm,B", "use bilstm for buffer")
     ("use_treelstm,R", "use treelstm for sub-graph")
@@ -83,6 +84,7 @@ int main(int argc, char** argv) {
   Opt.UPDATE_ANCESTOR = conf.count("update_ancestor");
   Opt.USE_ATTENTION = conf.count("use_attention");
   Opt.USE_2MODEL = conf.count("model2");
+  Opt.USE_3MODEL = conf.count("model3");
   Opt.POST_PROCESS = conf.count("post");
   Opt.SDP_OUTPUT = conf.count("sdp_output");
   Opt.HAS_HEAD = conf.count("has_head");
@@ -117,8 +119,11 @@ int main(int argc, char** argv) {
       cerr << "Using post processing." << endl;
     if (Opt.HAS_HEAD)
       cerr << "Every word should have at least one head." << endl;
-    if (Opt.USE_2MODEL)
+    if (Opt.USE_3MODEL)
+      cerr << "Using 3 model for predicting." << endl;
+    else if (Opt.USE_2MODEL)
       cerr << "Using 2 model for predicting." << endl;
+    
   }
   
   if (conf.count("dynet_seed")){
@@ -177,8 +182,12 @@ int main(int argc, char** argv) {
   }
   else if (conf.count("test_data")){
     parser -> load_model(conf["model"].as<string>());
-    if (conf.count("model2")) 
-      parser -> load_2nd_model(conf["model2"].as<string>());
+    //if (conf.count("model2")) 
+    //  parser -> load_2nd_model(conf["model2"].as<string>());
+    if (conf.count("model3")){
+      parser -> load_n_models({conf["model2"].as<string>(), conf["model3"].as<string>()});}
+    else if (conf.count("model2"))
+      parser -> load_n_models({conf["model2"].as<string>()});
     parser -> test(conf["test_data"].as<string>());
   }
 

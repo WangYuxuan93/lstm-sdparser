@@ -85,6 +85,7 @@ typedef struct Options {
   bool SDP_OUTPUT; // false
   bool HAS_HEAD; // false
   bool USE_2MODEL; // false
+  bool USE_3MODEL; // false
 }Options;
 
 typedef struct Parameters {
@@ -164,6 +165,7 @@ public:
 	Sizes System_size;
 	std::string transition_system;
   Model model, model_2nd;
+  vector<Model> model_;
 
   bool use_pretrained; // True if use pretraiend word embedding
   
@@ -172,6 +174,7 @@ public:
   set<unsigned> singletons;
 
   Parameters params, params_2nd;
+  vector<Parameters> params_;
 
   explicit LSTMParser();
   ~LSTMParser();
@@ -183,6 +186,9 @@ public:
   bool load(string model_file, string training_data_file, string word_embedding_file,
                         string dev_data_file = "");
   bool load_2nd_model(string model_file);
+
+  bool load_model(string model_file, Model& model, Parameters& params);
+  bool load_n_models(vector<string> model_files);
 
   void get_dynamic_infos();
   bool init_dynet();
@@ -232,10 +238,10 @@ public:
                    const vector<Expression>& word_emb);
 
   void apply_action_2nd( ComputationGraph* hg,
-                   LSTMBuilder& stack_lstm,
-                   LSTMBuilder& buffer_lstm,
-                   LSTMBuilder& action_lstm,
-                   TheirTreeLSTMBuilder& tree_lstm,
+                   //LSTMBuilder& stack_lstm,
+                   //LSTMBuilder& buffer_lstm,
+                   //LSTMBuilder& action_lstm,
+                   //TheirTreeLSTMBuilder& tree_lstm,
                    vector<Expression>& buffer,
                    const vector<int>& bufferi,
                    vector<Expression>& stack,
@@ -251,7 +257,8 @@ public:
                    const Expression& R,
                    string* rootword,
                    const vector<vector<bool>>& graph,
-                   const vector<Expression>& word_emb);
+                   const vector<Expression>& word_emb,
+                   Parameters& params);
 
   // for list-based algorithms
   void apply_action( ComputationGraph* hg,
@@ -280,10 +287,10 @@ public:
                    vector<int>& passi);
 
   void apply_action_2nd( ComputationGraph* hg,
-                   LSTMBuilder& stack_lstm,
-                   LSTMBuilder& buffer_lstm,
-                   LSTMBuilder& action_lstm,
-                   TheirTreeLSTMBuilder& tree_lstm,
+                   //LSTMBuilder& stack_lstm,
+                   //LSTMBuilder& buffer_lstm,
+                   //LSTMBuilder& action_lstm,
+                   //TheirTreeLSTMBuilder& tree_lstm,
                    vector<Expression>& buffer,
                    const vector<int>& bufferi,
                    vector<Expression>& stack,
@@ -300,9 +307,10 @@ public:
                    string* rootword,
                    const vector<vector<bool>>& graph,
                    const vector<Expression>& word_emb,
-                   LSTMBuilder& pass_lstm,
+                   //LSTMBuilder& pass_lstm,
                    vector<Expression>& pass,
-                   const vector<int>& passi);
+                   const vector<int>& passi,
+                   Parameters& params);
 
   std::vector<unsigned> log_prob_parser(ComputationGraph* hg,
                      const std::vector<unsigned>& raw_sent,  // raw sentence
@@ -340,7 +348,7 @@ public:
                      const map<unsigned, std::string>& intToWords,
                      double *right, 
                      std::vector<std::vector<string>>& cand,
-                     int model_number);
+                     unsigned model_number);
 
   bool IsActionForbidden2(const string& a, unsigned bsize, unsigned ssize, vector<int> stacki);
 
