@@ -10,9 +10,9 @@ Transition based dependency parser with state embeddings computed by LSTM-based 
 
 If you don't have Eigen already, you can get it easily using the following command:
 
-'''
-hg clone https://bitbucket.org/eigen/eigen/ -r 699b659
-'''
+
+    hg clone https://bitbucket.org/eigen/eigen/ -r 699b659
+
 
 #### Checking out the project for the first time
 
@@ -25,7 +25,7 @@ hg clone https://bitbucket.org/eigen/eigen/ -r 699b659
 
 #### Train a parsing model
 
-Having a training.conll file and a development.conll formatted according to the [CoNLL data format](http://ilk.uvt.nl/conll/#dataformat), to train a parsing model with the LSTM parser type the following at the command line prompt:
+Having a training.conll file and a development.conll formatted according to the [SemEval16 Task9 data format](http://alt.qcri.org/semeval2016/task9/index.php?id=data-and-tools), to train a parsing model with the LSTM parser type the following at the command line prompt:
 
     parser/lstmparse -T training.conll -d development.conll -s list-graph --data_type text --pretrained_dim 100 --hidden_dim 200 --bilstm_hidden_dim 100 --lstm_input_dim 200 --input_dim 100 --action_dim 50 --pos_dim 50 --rel_dim 50 --dynet_mem 2000 --model_dir models/ --max_itr 5000 -P -t
 
@@ -39,11 +39,10 @@ Note-4: You can train the parser with Bi-LSTM Subtraction (-B) and Incremental T
 
 #### Parse data with your parsing model
 
-Having a test.conll file formatted according to the [CoNLL data format](http://ilk.uvt.nl/conll/#dataformat)
+Having a test.conll file formatted according to the [SemEval16 Task9 data format](http://alt.qcri.org/semeval2016/task9/index.php?id=data-and-tools)
 
     parser/lstmparse -T training.conll -p test.conll -s list-graph --data_type text --pretrained_dim 100 --hidden_dim 200 --bilstm_hidden_dim 100 --lstm_input_dim 200 --input_dim 100 --action_dim 50 --pos_dim 50 --rel_dim 50 --dynet_mem 2500 -P -m models/parser_list-graph_pos_nobs_notr_text_2_100_200_50_200_50_50_100-pidXXXX.params
 
-The model name/id is stored where the parser has been trained.
 The parser will output the conll file with the parsing result.
 
 #### Pretrained models
