@@ -5,8 +5,14 @@ Transition based dependency parser with state embeddings computed by LSTM-based 
 
  * A C++ compiler supporting the [C++11 language standard](https://en.wikipedia.org/wiki/C%2B%2B11)
  * [Boost](http://www.boost.org/) libraries
- * [Eigen](http://eigen.tuxfamily.org) (newer versions strongly recommended)
+ * [Eigen](https://bitbucket.org/eigen/eigen) (Development version)
  * [CMake](http://www.cmake.org/)
+
+If you don't have Eigen already, you can get it easily using the following command:
+
+'''
+hg clone https://bitbucket.org/eigen/eigen/ -r 699b659
+'''
 
 #### Checking out the project for the first time
 
@@ -22,8 +28,6 @@ Transition based dependency parser with state embeddings computed by LSTM-based 
 Having a training.conll file and a development.conll formatted according to the [CoNLL data format](http://ilk.uvt.nl/conll/#dataformat), to train a parsing model with the LSTM parser type the following at the command line prompt:
 
     parser/lstmparse -T training.conll -d development.conll -s list-graph --data_type text --pretrained_dim 100 --hidden_dim 200 --bilstm_hidden_dim 100 --lstm_input_dim 200 --input_dim 100 --action_dim 50 --pos_dim 50 --rel_dim 50 --dynet_mem 2000 --model_dir models/ --max_itr 5000 -P -t
-    
-Link to the word vectors that we used in the ACL 2015 paper for English:  [sskip.100.vectors](https://drive.google.com/file/d/0B8nESzOdPhLsdWF2S1Ayb1RkTXc/view?usp=sharing).
 
 Note-1: You can also run it without word embeddings by removing the -w option for both training and parsing.
 
@@ -50,11 +54,11 @@ TODO
 
 If you make use of this software, please cite the following:
 
-    @inproceedings{dyer:2015acl,
-      author={Chris Dyer and Miguel Ballesteros and Wang Ling and Austin Matthews and Noah A. Smith},
-      title={Transition-based Dependeny Parsing with Stack Long Short-Term Memory}
-      booktitle={Proc. ACL},
-      year=2015,
+    @inproceedings{wang:2018aaai,
+      author={Wang Yuxuan and Che Wanxiang and Guo Jiang and Liu Ting},
+      title={A Neural Transition-Based Approach for Semantic Dependency Graph Parsing}
+      booktitle={Proc. AAAI},
+      year=2018,
     }
 
 #### License
