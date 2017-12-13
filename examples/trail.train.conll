@@ -1,0 +1,54 @@
+1	我们	我们	PN	PN	_	3	Poss	_	_
+2	的	的	DEG	DEG	_	1	mAux	_	_
+3	党	党	NN	NN	_	4	Exp	_	_
+3	党	党	NN	NN	_	6	Exp	_	_
+4	兴旺发达	兴旺发达	VV	VV	_	0	Root	_	_
+5	，	，	PU	PU	_	4	mPunc	_	_
+6	后继有人	后继有人	NN	NN	_	4	eSucc	_	_
+7	。	。	PU	PU	_	6	mPunc	_	_
+
+1	你	你	PN	PN	_	2	Agt	_	_
+2	跑	跑	VV	VV	_	0	Root	_	_
+3	过去	过去	NT	NT	_	2	mDir	_	_
+4	了	了	AS	AS	_	2	mTime	_	_
+5	没有	没有	VE	VE	_	2	mNeg	_	_
+6	？	？	PU	PU	_	2	mPunc	_	_
+
+1	当	当	P	P	_	4	mPrep	_	_
+2	男	男	JJ	JJ	_	3	Desc	_	_
+3	主角	主角	NN	NN	_	4	Agt	_	_
+3	主角	主角	NN	NN	_	7	Agt	_	_
+4	策马	策马	VV	VV	_	14	dTime	_	_
+5	向	向	P	P	_	6	mPrep	_	_
+6	夕阳	夕阳	NN	NN	_	7	Dir	_	_
+7	驰	驰	VV	VV	_	4	ePurp	_	_
+8	去	去	VV	VV	_	7	mDir	_	_
+9	时	时	LC	LC	_	7	mTime	_	_
+10	，	，	PU	PU	_	7	mPunc	_	_
+11	尾声	尾声	NN	NN	_	12	Desc	_	_
+12	音乐	音乐	NN	NN	_	14	Exp	_	_
+13	逐渐	逐渐	AD	AD	_	14	Mann	_	_
+14	消失	消失	VV	VV	_	0	Root	_	_
+15	。	。	PU	PU	_	14	mPunc	_	_
+
+1	他	他	PN	PN	_	7	Exp	_	_
+2	没有	没有	VE	VE	_	7	mNeg	_	_
+3	你	你	PN	PN	_	1	Comp	_	_
+3	你	你	PN	PN	_	4	Poss	_	_
+4	脑子	脑子	NN	NN	_	7	Exp	_	_
+5	那么	那么	AD	AD	_	7	Mann	_	_
+6	好	好	VA	VA	_	7	Mann	_	_
+7	用	用	VA	VA	_	0	Root	_	_
+8	。	。	PU	PU	_	7	mPunc	_	_
+
+1	有	有	VE	VE	_	3	mVain	_	_
+2	一	一	CD	CD	_	3	Quan	_	_
+3	天	天	M	M	_	8	Time	_	_
+4	，	，	PU	PU	_	3	mPunc	_	_
+5	更赢	更赢	NR	NR	_	8	Agt	_	_
+6	跟	跟	P	P	_	7	mPrep	_	_
+7	魏王	魏王	NR	NR	_	8	Datv	_	_
+8	到	到	VV	VV	_	0	Root	_	_
+9	郊外	郊外	NN	NN	_	8	Lfin	_	_
+10	打猎	打猎	VV	VV	_	8	ePurp	_	_
+11	。	。	PU	PU	_	10	mPunc	_	_

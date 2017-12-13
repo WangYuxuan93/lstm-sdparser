@@ -1,0 +1,30 @@
+1	盖	盖	NN	NN	_	5	dExp	_	_
+2	楼	楼	NN	NN	_	1	Prod	_	_
+3	先	先	AD	AD	_	5	mTime	_	_
+4	要	要	VV	VV	_	5	mMod	_	_
+5	打	打	VV	VV	_	0	Root	_	_
+6	地基	地基	NN	NN	_	5	Prod	_	_
+7	。	。	PU	PU	_	5	mPunc	_	_
+
+1	他	他	PN	PN	_	6	Agt	_	_
+2	对	对	P	P	_	5	mPrep	_	_
+3	那	那	DT	DT	_	4	Sco	_	_
+4	个	个	M	M	_	5	Qp	_	_
+5	罪犯	罪犯	NN	NN	_	6	Datv	_	_
+6	做出	做出	VV	VV	_	0	Root	_	_
+7	了	了	AS	AS	_	6	mTime	_	_
+8	裁决	裁决	NN	NN	_	6	Cont	_	_
+9	。	。	PU	PU	_	6	mPunc	_	_
+
+1	难怪	难怪	AD	AD	_	2	mMod	_	_
+2	有	有	VE	VE	_	0	Root	_	_
+3	人	人	NN	NN	_	2	Exp	_	_
+3	人	人	NN	NN	_	4	Agt	_	_
+4	说	说	VV	VV	_	2	eSucc	_	_
+5	电子	电子	NN	NN	_	6	Desc	_	_
+6	计算机	计算机	NN	NN	_	9	Agt	_	_
+7	正	正	AD	AD	_	9	mTime	_	_
+8	渐渐	渐渐	AD	AD	_	9	Mann	_	_
+9	接管	接管	VV	VV	_	4	dCont	_	_
+10	世界	世界	NN	NN	_	9	Pat	_	_
+11	。	。	PU	PU	_	2	mPunc	_	_

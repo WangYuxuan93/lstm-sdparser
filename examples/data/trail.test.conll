@@ -1,0 +1,22 @@
+1	早起	早起	AD	AD	_	2	Exp	_	_
+2	使	使	VV	VV	_	0	Root	_	_
+3	人	人	NN	NN	_	2	Datv	_	_
+3	人	人	NN	NN	_	4	Exp	_	_
+4	健康	健康	VV	VV	_	2	eResu	_	_
+
+1	我	我	PN	PN	_	3	Agt	_	_
+2	在	在	P	P	_	3	mTime	_	_
+3	寻找	寻找	VV	VV	_	0	Root	_	_
+4	我	我	PN	PN	_	6	Poss	_	_
+5	的	的	DEG	DEG	_	4	mAux	_	_
+6	前途	前途	NN	NN	_	3	Cont	_	_
+
+1	修改	修改	NN	NN	_	4	rPat	_	_
+2	后	后	LC	LC	_	1	mTime	_	_
+3	的	的	DEG	DEG	_	1	mAux	_	_
+4	系统	系统	NN	NN	_	5	Exp	_	_
+5	使	使	VV	VV	_	0	Root	_	_
+6	人	人	NN	NN	_	5	Datv	_	_
+6	人	人	NN	NN	_	8	Aft	_	_
+7	比较	比较	AD	AD	_	8	mDegr	_	_
+8	满意	满意	VV	VV	_	5	ePurp	_	_
